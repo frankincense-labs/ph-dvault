@@ -71,6 +71,22 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
     console.warn('Profile creation warning:', profileError)
   }
 
+  // Send OTP to phone number (preferred) or email for verification
+  // Try phone first, fallback to email if phone not provided
+  try {
+    if (data.phone) {
+      await sendOTP(data.phone, true) // Send SMS to phone
+    } else {
+      // Fallback to email OTP if no phone provided
+      await sendOTP(data.email, false) // Send email OTP
+    }
+  } catch (otpError) {
+      // If OTP fails, log the error but don't block signup
+      console.warn('OTP send warning:', otpError)
+      // You might want to throw here if OTP is critical
+      // throw new Error('Failed to send OTP. Please check your contact information and try again.')
+  }
+
   return {
     user: authData.user,
     session: authData.session,
@@ -153,4 +169,48 @@ export async function updatePassword(newPassword: string) {
     password: newPassword,
   })
   if (error) throw error
+}
+
+// Send OTP to phone number (SMS) or email
+export async function sendOTP(phoneOrEmail: string, isPhone: boolean = true) {
+  if (isPhone) {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: phoneOrEmail,
+    })
+    if (error) throw error
+  } else {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: phoneOrEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth-success`,
+      },
+    })
+    if (error) throw error
+  }
+}
+
+// Resend OTP
+export async function resendOTP(phoneOrEmail: string, isPhone: boolean = true) {
+  return sendOTP(phoneOrEmail, isPhone)
+}
+
+// Verify OTP
+export async function verifyOTP(phoneOrEmail: string, token: string, isPhone: boolean = true) {
+  if (isPhone) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: phoneOrEmail,
+      token,
+      type: 'sms',
+    })
+    if (error) throw error
+    return data
+  } else {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: phoneOrEmail,
+      token,
+      type: 'email',
+    })
+    if (error) throw error
+    return data
+  }
 }

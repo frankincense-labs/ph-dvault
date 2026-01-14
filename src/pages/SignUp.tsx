@@ -83,7 +83,15 @@ export default function SignUp() {
         mdcn_number: selectedRole === 'doctor' ? data.mdcn_number : undefined,
       })
       
-      navigate('/verify-otp')
+      // Store phone number or email for OTP verification
+      if (data.phone) {
+        sessionStorage.setItem('signupPhone', data.phone)
+        navigate('/verify-otp', { state: { phone: data.phone } })
+      } else {
+        // Fallback to email if no phone provided
+        sessionStorage.setItem('signupEmail', data.email)
+        navigate('/verify-otp', { state: { email: data.email } })
+      }
     } catch (err: any) {
       let errorMessage = err.message || 'Failed to create account. Please try again.'
       
@@ -226,7 +234,7 @@ export default function SignUp() {
                 )}
               />
 
-              {/* Phone Field (Optional) */}
+              {/* Phone Field (Required for OTP) */}
               <FormField
                 control={form.control}
                 name="phone"
@@ -237,6 +245,7 @@ export default function SignUp() {
                       <Input 
                         type="tel"
                         placeholder="08123456789"
+                        required
                         className="h-12 rounded-full border-[#cbd5e1] body-text-medium"
                         {...field}
                       />
