@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,8 +11,9 @@ import AuthLayout from '@/components/AuthLayout'
 import { useAuthStore } from '@/store/useAuthStore'
 import { Eye, EyeOff } from 'lucide-react'
 import type { UserRole } from '@/types/database'
+import { isValidMDCNFormat } from '@/lib/api/mdcn'
 
-const signUpSchema = z.object({
+const createSignUpSchema = (isDoctor: boolean) => z.object({
   email: z.string().email('Please enter a valid email address'),
   full_name: z.string().min(2, 'Full name must be at least 2 characters'),
   password: z
@@ -24,6 +25,13 @@ const signUpSchema = z.object({
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   confirmPassword: z.string(),
   phone: z.string().optional(),
+  mdcn_number: isDoctor 
+    ? z.string()
+        .min(1, 'MDCN number is required for doctors')
+        .refine((val) => isValidMDCNFormat(val), {
+          message: 'Invalid MDCN number format. Examples: MDCN/12345/2020 or 12345/2020'
+        })
+    : z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -37,33 +45,42 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [selectedRole, setSelectedRole] = useState<UserRole>('patient')
 
-  const form = useForm<z.infer<typeof signUpSchema>>({
-    resolver: zodResolver(signUpSchema),
+  const form = useForm<z.infer<ReturnType<typeof createSignUpSchema>>>({
+    resolver: zodResolver(createSignUpSchema(selectedRole === 'doctor')),
     defaultValues: {
       email: '',
       full_name: '',
       password: '',
       confirmPassword: '',
       phone: '',
+      mdcn_number: '',
     },
   })
 
-  const onSubmit = async (data: z.infer<typeof signUpSchema>) => {
+  // Update form when role changes
+  useEffect(() => {
+    // Clear errors and reset MDCN field when switching roles
+    form.clearErrors()
+    if (selectedRole === 'patient') {
+      form.setValue('mdcn_number', '')
+    }
+  }, [selectedRole, form])
+
+  const handleRoleChange = (role: UserRole) => {
+    setSelectedRole(role)
+  }
+
+  const onSubmit = async (data: z.infer<ReturnType<typeof createSignUpSchema>>) => {
     try {
       setError(null)
-      
-      // If doctor is selected, redirect to doctor signup page
-      if (selectedRole === 'doctor') {
-        navigate('/signup/doctor')
-        return
-      }
       
       await signUp({
         email: data.email,
         password: data.password,
         full_name: data.full_name,
-        role: 'patient',
+        role: selectedRole,
         phone: data.phone,
+        mdcn_number: selectedRole === 'doctor' ? data.mdcn_number : undefined,
       })
       
       navigate('/verify-otp')
@@ -134,7 +151,7 @@ export default function SignUp() {
             <div className="flex gap-3 sm:gap-4">
               <button
                 type="button"
-                onClick={() => setSelectedRole('patient')}
+                onClick={() => handleRoleChange('patient')}
                 className={`flex-1 p-3 sm:p-4 border rounded-lg text-center transition-colors ${
                   selectedRole === 'patient'
                     ? 'bg-teal-primary border-teal-primary'
@@ -147,7 +164,7 @@ export default function SignUp() {
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedRole('doctor')}
+                onClick={() => handleRoleChange('doctor')}
                 className={`flex-1 p-3 sm:p-4 border rounded-lg text-center transition-colors ${
                   selectedRole === 'doctor'
                     ? 'bg-teal-primary border-teal-primary'
@@ -228,6 +245,31 @@ export default function SignUp() {
                   </FormItem>
                 )}
               />
+
+              {/* MDCN Number Field (Only for Doctors) */}
+              {selectedRole === 'doctor' && (
+                <FormField
+                  control={form.control}
+                  name="mdcn_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="label-text">MDCN Number <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="text"
+                          placeholder="MDCN/12345/2020 or 12345/2020"
+                          className="h-12 rounded-full border-[#cbd5e1] body-text-medium"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-[11px] text-[#667185] mt-1">
+                        Enter your Medical and Dental Council of Nigeria registration number
+                      </p>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Password Field */}
               <FormField
