@@ -53,6 +53,13 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   
   if (!authData.user) throw new Error('Failed to create user')
 
+  // IMPORTANT: If "Confirm email" is OFF, signUp creates a session automatically
+  // We need to sign out immediately to prevent auto-login before OTP verification
+  if (authData.session) {
+    // Sign out to clear the session - user must verify OTP first
+    await supabase.auth.signOut()
+  }
+
   // Create profile in profiles table
   // Note: If email confirmation is required, profile will be created by the trigger
   // But we'll try to create it here anyway in case confirmation is disabled
@@ -75,33 +82,58 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   }
 
   // Send OTP to email for verification
-  // IMPORTANT: "Confirm email" must be OFF in Supabase for OTP to work
-  // If it's ON, Supabase will send confirmation links instead of allowing OTP
-  // Small delay to ensure user is created before sending OTP
-  await new Promise(resolve => setTimeout(resolve, 500))
+  // CRITICAL: Supabase email template MUST be configured correctly:
+  // 1. Go to: Supabase Dashboard → Authentication → Email → Templates
+  // 2. Edit the "Magic Link" template (or create custom OTP template)
+  // 3. Replace {{ .ConfirmationURL }} with {{ .Token }} to send OTP codes
+  // 4. The email should show the 6-digit code, not a clickable link
+  // 
+  // Also note: Free tier has 2 emails/hour limit - if exceeded, OTP won't send
+  // Small delay to ensure user is fully created before sending OTP
+  await new Promise(resolve => setTimeout(resolve, 1500))
   
   try {
-    // Always send email OTP (we don't use phone OTP anymore)
-    // signInWithOtp sends OTP code when emailRedirectTo is NOT provided
-    // If emailRedirectTo is provided, it sends a magic link instead
+    // Use signInWithOtp to send OTP code
+    // This sends OTP code (6 digits) IF email template uses {{ .Token }}
+    // If template uses {{ .ConfirmationURL }}, it sends magic link instead
     const { error } = await supabase.auth.signInWithOtp({
       email: data.email,
-      // Don't include emailRedirectTo - this makes it send OTP code instead of magic link
+      options: {
+        // shouldCreateUser: false since user already exists from signUp
+        shouldCreateUser: false,
+        // CRITICAL: Do NOT include emailRedirectTo - that forces magic link behavior
+      },
     })
     
     if (error) {
       console.error('OTP send failed:', error)
-      throw new Error(`Failed to send OTP code: ${error.message}. Make sure "Confirm email" is disabled in Supabase settings.`)
+      
+      // Handle specific error cases
+      if (error.message.includes('email') && error.message.includes('already')) {
+        throw new Error('An account with this email already exists. Please sign in instead.')
+      }
+      
+      // Rate limit errors
+      if (error.message.includes('429') || error.message.includes('rate limit') || error.message.includes('too many')) {
+        throw new Error('Email rate limit reached. Please wait up to 1 hour before requesting another OTP code. (Supabase free tier allows only 2 emails per hour)')
+      }
+      
+      // Check if it's a magic link issue
+      if (error.message.includes('email') || error.message.includes('template')) {
+        throw new Error(`Failed to send OTP: ${error.message}. Make sure the Supabase email template uses {{ .Token }} instead of {{ .ConfirmationURL }}.`)
+      }
+      
+      throw new Error(`Failed to send OTP code: ${error.message}`)
     }
   } catch (otpError: any) {
-      // If OTP fails, throw the error so user knows
-      // Common reasons: "Confirm email" is enabled, rate limiting, or email service issue
       throw otpError
   }
 
+  // Return user data but NO session - user must verify OTP first
+  // Session will be created after OTP verification
   return {
     user: authData.user,
-    session: authData.session,
+    session: null, // No session until OTP is verified
     role: data.role,
     verification_status: data.role === 'doctor' ? 'pending' : undefined,
   }

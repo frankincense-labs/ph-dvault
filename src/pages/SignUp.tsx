@@ -24,7 +24,7 @@ const createSignUpSchema = (isDoctor: boolean) => z.object({
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   confirmPassword: z.string(),
-  phone: z.string().optional(),
+  phone: z.string().min(1, 'Phone number is required'),
   mdcn_number: isDoctor 
     ? z.string()
         .min(1, 'MDCN number is required for doctors')
@@ -90,14 +90,14 @@ export default function SignUp() {
       let errorMessage = err.message || 'Failed to create account. Please try again.'
       
       // Better error messages
-      if (err.message?.includes('429') || err.message?.includes('Too Many Requests')) {
-        errorMessage = 'Too many signup attempts. Please wait a few minutes and try again.'
+      if (err.message?.includes('429') || err.message?.includes('Too Many Requests') || err.message?.includes('rate limit')) {
+        errorMessage = 'Email rate limit reached. Supabase free tier allows only 2 emails per hour. Please wait before trying again.'
       } else if (err.message?.includes('User already registered')) {
         errorMessage = 'An account with this email already exists. Please sign in instead.'
       } else if (err.message?.includes('Invalid email')) {
         errorMessage = 'Please enter a valid email address.'
       } else if (err.message?.includes('OTP') || err.message?.includes('Failed to send')) {
-        errorMessage = err.message + ' Make sure "Confirm email" is disabled in Supabase settings.'
+        errorMessage = err.message
       }
       
       setError(errorMessage)
@@ -230,18 +230,17 @@ export default function SignUp() {
                 )}
               />
 
-              {/* Phone Field (Required for OTP) */}
+              {/* Phone Field (Optional) */}
               <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="label-text">Phone Number (Optional)</FormLabel>
+                    <FormLabel className="label-text">Phone Number</FormLabel>
                     <FormControl>
                       <Input 
                         type="tel"
                         placeholder="08123456789"
-                        required
                         className="h-12 rounded-full border-[#cbd5e1] body-text-medium"
                         {...field}
                       />

@@ -127,6 +127,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
+        // CRITICAL: Check if user's email is verified
+        // If email_confirmed_at is null, user hasn't verified OTP yet
+        // Even if they clicked a magic link, we require OTP verification
+        if (!session.user.email_confirmed_at) {
+          // User is not verified - sign them out and don't authenticate
+          await supabase.auth.signOut()
+          set({
+            user: null,
+            role: null,
+            isAuthenticated: false,
+            isLoading: false,
+          })
+          return
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
