@@ -13,7 +13,7 @@ export default function ProtectedRoute({
   allowedRoles,
   requireAuth = true 
 }: ProtectedRouteProps) {
-  const { isAuthenticated, role, isLoading } = useAuthStore()
+  const { isAuthenticated, role, isLoading, user } = useAuthStore()
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -29,6 +29,12 @@ export default function ProtectedRoute({
 
   // Redirect to sign in if not authenticated
   if (requireAuth && !isAuthenticated) {
+    // Check if user exists but not authenticated (needs OTP verification)
+    const signupEmail = sessionStorage.getItem('signupEmail')
+    if (user && signupEmail) {
+      // User signed up but hasn't verified OTP yet
+      return <Navigate to="/verify-otp" replace />
+    }
     return <Navigate to="/signin" replace />
   }
 

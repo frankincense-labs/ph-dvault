@@ -65,8 +65,11 @@ export default function OTPVerification() {
       // Clear stored contact info
       sessionStorage.removeItem('signupPhone')
       sessionStorage.removeItem('signupEmail')
-      // Refresh auth session
+      
+      // OTP verification creates a session - refresh auth state
       await checkSession()
+      
+      // Navigate to dashboard only if authenticated
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Invalid OTP code. Please try again.')

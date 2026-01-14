@@ -91,6 +91,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true })
     try {
       const response = await authAPI.signUp(data)
+      // Don't set isAuthenticated to true yet - user needs to verify OTP first
+      // Store user data temporarily, but keep isAuthenticated false
       const user: User = {
         id: response.user.id,
         email: response.user.email!,
@@ -101,7 +103,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({
         user,
         role: user.role,
-        isAuthenticated: true,
+        isAuthenticated: false, // User must verify OTP before being authenticated
         isLoading: false,
       })
     } catch (error) {
