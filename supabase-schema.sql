@@ -1,3 +1,29 @@
+-- Pending signups (zero user creation until verification)
+create extension if not exists pgcrypto;
+
+create table if not exists public.pending_signups (
+  id uuid primary key default gen_random_uuid(),
+  email text unique not null,
+  password_encrypted text not null,
+  password_iv text not null,
+  full_name text not null,
+  role text not null,
+  phone text,
+  mdcn_number text,
+  otp_hash text not null,
+  otp_expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.pending_signups enable row level security;
+
+-- No client access to pending signups
+create policy "No direct access to pending signups"
+on public.pending_signups
+for all
+using (false)
+with check (false);
 -- PH-DVault Database Schema for Supabase/PostgreSQL
 
 -- Enable UUID extension
