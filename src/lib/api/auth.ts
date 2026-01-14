@@ -26,11 +26,14 @@ export interface AuthResponse {
 // Sign Up
 export async function signUp(data: SignUpData): Promise<AuthResponse> {
   // Create auth user
+  // Note: If "Confirm email" is enabled in Supabase, this will send a confirmation link
+  // We'll send OTP separately - user should use OTP code, not the confirmation link
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth-success`,
+      // Don't set emailRedirectTo to avoid triggering confirmation email
+      // We'll handle verification via OTP instead
       data: {
         full_name: data.full_name,
         role: data.role,
@@ -72,19 +75,21 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   }
 
   // Send OTP to phone number (preferred) or email for verification
-  // Try phone first, fallback to email if phone not provided
+  // Note: If "Confirm email" is enabled in Supabase, it will send a confirmation link
+  // We send OTP separately - user should use the OTP code, not the confirmation link
   try {
     if (data.phone) {
       await sendOTP(data.phone, true) // Send SMS to phone
     } else {
-      // Fallback to email OTP if no phone provided
+      // For email OTP, we need to use signInWithOtp which works even if user exists
+      // This sends an OTP code instead of a confirmation link
       await sendOTP(data.email, false) // Send email OTP
     }
-  } catch (otpError) {
-      // If OTP fails, log the error but don't block signup
+  } catch (otpError: any) {
+      // If OTP fails, it might be because user already exists or email confirmation is interfering
+      // Log the error - user might need to use the confirmation link instead
       console.warn('OTP send warning:', otpError)
-      // You might want to throw here if OTP is critical
-      // throw new Error('Failed to send OTP. Please check your contact information and try again.')
+      // Don't throw - let user proceed and they can use confirmation link if OTP doesn't work
   }
 
   return {

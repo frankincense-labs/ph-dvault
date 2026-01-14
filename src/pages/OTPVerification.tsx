@@ -113,7 +113,7 @@ export default function OTPVerification() {
     <AuthLayout
       illustration="/assets/otp-verify.svg"
       title="Verify Your Account"
-      subtitle="Enter the code we sent to your email or phone number to complete your registration."
+      subtitle="Enter the code we sent to your email to complete your registration."
     >
       <div className="flex flex-col gap-6 sm:gap-7 w-full">
         {/* Logo */}
@@ -123,7 +123,7 @@ export default function OTPVerification() {
         <div className="flex flex-col gap-2">
           <h2 className="heading-xl">OTP Verification</h2>
           <p className="body-text text-sm sm:text-base">
-            We sent a 6-digit code to verify your {isPhone ? 'phone number' : 'email address'}. 
+            We sent a 6-digit code to verify your email address.
             {maskedContact && (
               <span className="block mt-1">Please type the OTP sent to {maskedContact}</span>
             )}
