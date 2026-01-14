@@ -90,17 +90,16 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   // 
   // Also note: Free tier has 2 emails/hour limit - if exceeded, OTP won't send
   // Small delay to ensure user is fully created before sending OTP
-  await new Promise(resolve => setTimeout(resolve, 1500))
+  await new Promise(resolve => setTimeout(resolve, 2000))
   
   try {
-    // Use signInWithOtp to send OTP code
-    // This sends OTP code (6 digits) IF email template uses {{ .Token }}
-    // If template uses {{ .ConfirmationURL }}, it sends magic link instead
+    // Use signInWithOtp to send OTP code for passwordless sign-in
+    // Since user already exists from signUp, set shouldCreateUser: false
+    // The OTP will be used to verify and create a session
     const { error } = await supabase.auth.signInWithOtp({
       email: data.email,
       options: {
-        // shouldCreateUser: false since user already exists from signUp
-        shouldCreateUser: false,
+        shouldCreateUser: false, // User already exists from signUp
         // CRITICAL: Do NOT include emailRedirectTo - that forces magic link behavior
       },
     })
@@ -146,8 +145,21 @@ export async function signIn(data: SignInData): Promise<AuthResponse> {
     password: data.password,
   })
 
-  if (error) throw error
+  if (error) {
+    // If user exists but email not confirmed, guide them to verify
+    if (error.message.includes('Email not confirmed') || error.message.includes('email_confirmed_at')) {
+      throw new Error('Please verify your email address first. Check your inbox for the OTP code or request a new one.')
+    }
+    throw error
+  }
   if (!authData.user) throw new Error('Sign in failed')
+
+  // Check if email is verified
+  if (!authData.user.email_confirmed_at) {
+    // User exists but email not verified - sign them out and redirect to OTP
+    await supabase.auth.signOut()
+    throw new Error('Email not verified. Please verify your email address first.')
+  }
 
   // Get user profile to get role
   const { data: profile, error: profileError } = await supabase
@@ -249,12 +261,26 @@ export async function verifyOTP(phoneOrEmail: string, token: string, isPhone: bo
     if (error) throw error
     return data
   } else {
+    // For email OTP verification after signUp + signInWithOtp
+    // Use 'email' type since we sent OTP via signInWithOtp (passwordless sign-in)
+    // This will verify the OTP and create a session
     const { data, error } = await supabase.auth.verifyOtp({
       email: phoneOrEmail,
       token,
-      type: 'email',
+      type: 'email', // This is for passwordless sign-in OTP
     })
-    if (error) throw error
+    
+    if (error) {
+      // Provide clearer error messages
+      if (error.message.includes('expired') || error.message.includes('invalid')) {
+        throw new Error('Token has expired or is invalid. Please request a new OTP code.')
+      }
+      if (error.message.includes('401') || error.message.includes('403')) {
+        throw new Error('OTP verification failed. Please make sure you entered the correct code or request a new one.')
+      }
+      throw error
+    }
+    
     return data
   }
 }
