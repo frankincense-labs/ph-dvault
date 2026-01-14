@@ -82,12 +82,11 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   
   try {
     // Always send email OTP (we don't use phone OTP anymore)
-    // signInWithOtp works even if user exists - it sends an OTP code
+    // signInWithOtp sends OTP code when emailRedirectTo is NOT provided
+    // If emailRedirectTo is provided, it sends a magic link instead
     const { error } = await supabase.auth.signInWithOtp({
       email: data.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth-success`,
-      },
+      // Don't include emailRedirectTo - this makes it send OTP code instead of magic link
     })
     
     if (error) {
@@ -192,11 +191,11 @@ export async function sendOTP(phoneOrEmail: string, isPhone: boolean = true) {
     })
     if (error) throw error
   } else {
+    // For email OTP, don't include emailRedirectTo - this sends OTP code, not magic link
     const { error } = await supabase.auth.signInWithOtp({
       email: phoneOrEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth-success`,
-      },
+      // No emailRedirectTo = sends OTP code
+      // With emailRedirectTo = sends magic link
     })
     if (error) throw error
   }
