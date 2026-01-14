@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import BottomNav from './BottomNav'
 import Sidebar from './Sidebar'
-import { Menu, X } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { supabase } from '@/lib/supabase'
 

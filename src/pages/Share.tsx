@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Link as LinkIcon, Lock, MoreHorizontal, Loader2, Copy, Check, X } from 'lucide-react'
+import { Calendar, Link as LinkIcon, Lock, MoreHorizontal, Loader2, Copy, Check } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import DashboardLayout from '@/components/DashboardLayout'
@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuthStore } from '@/store/useAuthStore'
 import { getActiveShares, getShareHistory, revokeShare, generateShareLink } from '@/lib/api/shares'
-import { getRecords } from '@/lib/api/records'
 import type { ShareToken } from '@/types/database'
 
 export default function Share() {

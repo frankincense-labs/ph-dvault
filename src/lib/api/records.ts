@@ -4,13 +4,13 @@ import type { MedicalRecord, RecordCategory } from '@/types/database'
 export interface CreateRecordData {
   category: RecordCategory
   title: string
-  description?: string
+  description?: string | null
   file_url?: string
   file_hash?: string
   metadata?: Record<string, any>
   status?: 'ongoing' | 'completed' | 'archived'
-  start_date?: string
-  end_date?: string
+  start_date?: string | null
+  end_date?: string | null
 }
 
 // Get all records for current user
@@ -107,7 +107,7 @@ export async function uploadFile(
   const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
   // Upload file
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from('medical-files')
     .upload(filePath, file, {
       cacheControl: '3600',

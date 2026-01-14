@@ -51,7 +51,7 @@ export default function AddAllergies() {
       await createRecord(user.id, {
         category: 'allergies',
         title: data.allergen,
-        description: data.notes || null,
+        description: data.notes || undefined,
         status: 'ongoing',
         metadata: {
           triggers: triggers,

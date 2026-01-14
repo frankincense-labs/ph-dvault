@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, AlertCircle, Shield } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { accessSharedRecords, getShareByToken } from '@/lib/api/shares'
-import type { ShareToken } from '@/types/database'
 
 export default function SharedLink() {
   const { token } = useParams<{ token: string }>()
@@ -11,7 +10,6 @@ export default function SharedLink() {
   const { user, isAuthenticated, role } = useAuthStore()
   const [isValidating, setIsValidating] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [shareToken, setShareToken] = useState<ShareToken | null>(null)
 
   useEffect(() => {
     const validateToken = async () => {
@@ -30,8 +28,6 @@ export default function SharedLink() {
           setIsValidating(false)
           return
         }
-
-        setShareToken(share)
 
         // If user is a doctor and authenticated, automatically access the records
         if (isAuthenticated && role === 'doctor' && user?.id) {

@@ -13,7 +13,7 @@ interface User {
 
 interface AuthState {
   user: User | null
-  role: UserRole
+  role: UserRole | null
   isAuthenticated: boolean
   isLoading: boolean
   login: (user: User) => void
@@ -31,7 +31,7 @@ interface AuthState {
   checkSession: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   role: null,
   isAuthenticated: false,
@@ -48,12 +48,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     await authAPI.signOut()
-    set({
-      user: null,
-      role: null,
-      isAuthenticated: false,
-      isLoading: false,
-    })
+      set({
+        user: null,
+        role: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
   },
 
   signIn: async (email, password, rememberMe) => {

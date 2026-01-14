@@ -91,8 +91,6 @@ export default function Dashboard() {
     return record.description || 'No date'
   }
 
-  const getCategoryIcon = (category: RecordCategory) => categoryConfig[category]?.icon || '/assets/meds-icon.svg'
-  const getCategoryColor = (category: RecordCategory) => categoryConfig[category]?.color || '#f59e08'
   const getCategoryRoute = (category: RecordCategory) => categoryConfig[category]?.route || '/record/medication'
 
   const filteredRecords = selectedCategory 

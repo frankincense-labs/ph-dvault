@@ -7,7 +7,6 @@ import { ChevronLeft } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useAuthStore } from '@/store/useAuthStore'
 import { supabase } from '@/lib/supabase'
@@ -51,7 +50,7 @@ export default function EditProfile() {
         .select('*')
         .eq('id', user.id)
         .single()
-        .then(({ data, error }) => {
+        .then(({ data }) => {
           if (data) {
             form.reset({
               full_name: data.full_name || '',
@@ -88,9 +87,9 @@ export default function EditProfile() {
       if (error) throw error
 
       navigate('/settings')
-    } catch (error: any) {
-      console.error('Error updating profile:', error)
-      alert(error.message || 'Failed to update profile')
+    } catch (err: any) {
+      console.error('Error updating profile:', err)
+      alert(err.message || 'Failed to update profile')
     } finally {
       setIsSaving(false)
     }

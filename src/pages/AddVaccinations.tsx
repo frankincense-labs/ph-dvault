@@ -9,7 +9,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -20,7 +19,7 @@ import { createRecord } from '@/lib/api/records'
 const vaccinationSchema = z.object({
   vaccine: z.string().min(1, 'Vaccine name is required'),
   vaccine_name: z.string().optional(),
-  first_dose: z.date({ required_error: 'First dose date is required' }),
+  first_dose: z.date({ message: 'First dose date is required' }),
   second_dose: z.date().optional(),
   last_dose: z.date().optional(),
   side_effects: z.string().optional(),
@@ -59,10 +58,6 @@ export default function AddVaccinations() {
     try {
       // Determine status based on completed switch
       const status: 'ongoing' | 'completed' | 'archived' = completed ? 'completed' : 'ongoing'
-
-      // Get the latest dose date for start_date
-      const dates = [data.first_dose, data.second_dose, data.last_dose].filter(Boolean) as Date[]
-      const latestDate = dates.length > 0 ? new Date(Math.max(...dates.map(d => d.getTime()))) : data.first_dose
 
       // Create record
       await createRecord(user.id, {

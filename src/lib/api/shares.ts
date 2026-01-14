@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import type { ShareToken, ShareMethod, ShareStatus } from '@/types/database'
+import type { ShareToken, ShareMethod } from '@/types/database'
 
 export interface CreateShareData {
   method: ShareMethod

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { ChevronLeft, Calendar as CalendarIcon, Upload, X, Loader2 } from 'lucide-react'
+import { ChevronLeft, Calendar as CalendarIcon, Upload, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -18,7 +18,7 @@ import { createRecord, uploadFile } from '@/lib/api/records'
 
 const chronicConditionSchema = z.object({
   condition: z.string().min(1, 'Condition name is required'),
-  diagnosis_date: z.date({ required_error: 'Date of diagnosis is required' }),
+  diagnosis_date: z.date({ message: 'Date of diagnosis is required' }),
   hospital: z.string().optional(),
   notes: z.string().optional(),
 })

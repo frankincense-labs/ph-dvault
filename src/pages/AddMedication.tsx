@@ -20,7 +20,7 @@ const medicationSchema = z.object({
   medication_name: z.string().min(1, 'Medication name is required'),
   strength: z.string().min(1, 'Strength/Unit is required'),
   dosage: z.string().min(1, 'Dosage is required'),
-  start_date: z.date({ required_error: 'Start date is required' }),
+  start_date: z.date({ message: 'Start date is required' }),
   end_date: z.date().optional(),
   notes: z.string().optional(),
 })

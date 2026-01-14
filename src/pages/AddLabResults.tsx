@@ -103,7 +103,7 @@ export default function AddLabResults() {
       await createRecord(user.id, {
         category: 'lab_results',
         title: data.name,
-        description: data.notes || null,
+        description: data.notes || undefined,
         file_url: fileUrl,
         file_hash: fileHash,
         status: 'completed',

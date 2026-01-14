@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ChevronLeft, Link as LinkIcon, Copy, Check, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +9,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useAuthStore } from '@/store/useAuthStore'
 import { getRecords } from '@/lib/api/records'
 import { createShare, generateShareLink } from '@/lib/api/shares'
-import { format } from 'date-fns'
 import type { MedicalRecord, ShareToken } from '@/types/database'
 
 export default function GenerateLink() {

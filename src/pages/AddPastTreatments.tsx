@@ -19,7 +19,7 @@ import { createRecord, uploadFile } from '@/lib/api/records'
 const pastTreatmentSchema = z.object({
   name: z.string().min(1, 'Treatment name is required'),
   hospital: z.string().optional(),
-  start_date: z.date({ required_error: 'Start date is required' }),
+  start_date: z.date({ message: 'Start date is required' }),
   end_date: z.date().optional(),
   doctor: z.string().optional(),
   notes: z.string().optional(),
@@ -102,7 +102,7 @@ export default function AddPastTreatments() {
       let fileHash: string | undefined
       if (selectedFile) {
         try {
-          const uploadResult = await uploadFile(user.id, selectedFile, 'treatments')
+          const uploadResult = await uploadFile(user.id, selectedFile, 'past_treatments')
           fileUrl = uploadResult.url
           fileHash = uploadResult.hash
         } catch (uploadError: any) {
@@ -115,7 +115,7 @@ export default function AddPastTreatments() {
 
       // Create record
       await createRecord(user.id, {
-        category: 'treatments',
+        category: 'past_treatments',
         title: data.name,
         description: data.notes || null,
         file_url: fileUrl,

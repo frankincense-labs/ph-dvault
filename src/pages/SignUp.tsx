@@ -58,20 +58,13 @@ export default function SignUp() {
         return
       }
       
-      const response = await signUp({
+      await signUp({
         email: data.email,
         password: data.password,
         full_name: data.full_name,
         role: 'patient',
         phone: data.phone,
       })
-      
-      // Check if email confirmation is required
-      if (response.user && !response.session) {
-        // Email confirmation required
-        setError('Please check your email to confirm your account before signing in.')
-        return
-      }
       
       navigate('/verify-otp')
     } catch (err: any) {
