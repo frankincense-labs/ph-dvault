@@ -53,13 +53,6 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   
   if (!authData.user) throw new Error('Failed to create user')
 
-  // IMPORTANT: If "Confirm email" is OFF, signUp creates a session automatically
-  // We need to sign out immediately to prevent auto-login before OTP verification
-  if (authData.session) {
-    // Sign out to clear the session - user must verify OTP first
-    await supabase.auth.signOut()
-  }
-
   // Create profile in profiles table
   // Note: If email confirmation is required, profile will be created by the trigger
   // But we'll try to create it here anyway in case confirmation is disabled
@@ -79,6 +72,12 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   // or email confirmation is required. We'll continue anyway.
   if (profileError && !profileError.message.includes('duplicate key')) {
     console.warn('Profile creation warning:', profileError)
+  }
+
+  // IMPORTANT: If "Confirm email" is OFF, signUp creates a session automatically
+  // Keep the session for profile creation, then sign out to prevent auto-login
+  if (authData.session) {
+    await supabase.auth.signOut()
   }
 
   // Send OTP to email for verification
@@ -238,6 +237,10 @@ export async function sendOTP(phoneOrEmail: string, isPhone: boolean = true) {
     // For email OTP, don't include emailRedirectTo - this sends OTP code, not magic link
     const { error } = await supabase.auth.signInWithOtp({
       email: phoneOrEmail,
+      options: {
+        // For existing users, don't create a new account on resend
+        shouldCreateUser: false,
+      },
       // No emailRedirectTo = sends OTP code
       // With emailRedirectTo = sends magic link
     })
@@ -261,26 +264,31 @@ export async function verifyOTP(phoneOrEmail: string, token: string, isPhone: bo
     if (error) throw error
     return data
   } else {
-    // For email OTP verification after signUp + signInWithOtp
-    // Use 'email' type since we sent OTP via signInWithOtp (passwordless sign-in)
-    // This will verify the OTP and create a session
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: phoneOrEmail,
-      token,
-      type: 'email', // This is for passwordless sign-in OTP
-    })
-    
-    if (error) {
-      // Provide clearer error messages
-      if (error.message.includes('expired') || error.message.includes('invalid')) {
+    // For email OTP verification, try multiple types to handle Supabase flows reliably
+    const attempts: Array<'email' | 'signup' | 'magiclink'> = ['email', 'signup', 'magiclink']
+    let lastError: any = null
+
+    for (const type of attempts) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: phoneOrEmail,
+        token,
+        type,
+      })
+
+      if (!error) return data
+      lastError = error
+    }
+
+    if (lastError) {
+      if (lastError.message?.includes('expired') || lastError.message?.includes('invalid')) {
         throw new Error('Token has expired or is invalid. Please request a new OTP code.')
       }
-      if (error.message.includes('401') || error.message.includes('403')) {
+      if (lastError.message?.includes('401') || lastError.message?.includes('403')) {
         throw new Error('OTP verification failed. Please make sure you entered the correct code or request a new one.')
       }
-      throw error
+      throw lastError
     }
-    
-    return data
+
+    throw new Error('OTP verification failed. Please request a new OTP code.')
   }
 }

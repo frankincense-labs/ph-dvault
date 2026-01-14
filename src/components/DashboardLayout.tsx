@@ -72,11 +72,11 @@ export default function DashboardLayout({ children, showProfile = true }: Dashbo
                 <p className="text-[13px] sm:text-[14px] lg:text-[16px] text-[#b8b8b8]">Here is your health summary</p>
               </div>
               {avatarUrl && (
-                <img 
+              <img 
                   src={avatarUrl} 
                   alt={displayName} 
                   className="w-10 h-10 sm:w-11 sm:h-11 lg:w-14 lg:h-14 rounded-full object-cover shrink-0" 
-                />
+              />
               )}
             </div>
           )}

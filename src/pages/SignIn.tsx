@@ -39,7 +39,13 @@ export default function SignIn() {
       await signIn(data.email, data.password, data.rememberMe)
       navigate('/dashboard')
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in. Please check your credentials.')
+      let message = err.message || 'Failed to sign in. Please check your credentials.'
+      if (message.includes('Invalid login credentials')) {
+        message = 'Email not found or password is incorrect.'
+      } else if (message.includes('Email not verified')) {
+        message = 'Email not verified. Please verify your email address first.'
+      }
+      setError(message)
     }
   }
 
