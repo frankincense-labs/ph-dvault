@@ -85,7 +85,7 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
   // 1. Go to: Supabase Dashboard → Authentication → Email → Templates
   // 2. Edit the "Magic Link" template (or create custom OTP template)
   // 3. Replace {{ .ConfirmationURL }} with {{ .Token }} to send OTP codes
-  // 4. The email should show the 6-digit code, not a clickable link
+  // 4. The email should show the 8-digit code, not a clickable link
   // 
   // Also note: Free tier has 2 emails/hour limit - if exceeded, OTP won't send
   // Small delay to ensure user is fully created before sending OTP

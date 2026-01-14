@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AuthLayout from '@/components/AuthLayout'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { verifyOTP, resendOTP } from '@/lib/api/auth'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -15,6 +23,8 @@ export default function OTPVerification() {
   const [error, setError] = useState<string | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
   const [isResending, setIsResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState<string>('')
+  const [isResendDialogOpen, setIsResendDialogOpen] = useState(false)
   const [contact, setContact] = useState<string>('')
   const [maskedContact, setMaskedContact] = useState<string>('')
   const [isPhone, setIsPhone] = useState<boolean>(false)
@@ -47,8 +57,8 @@ export default function OTPVerification() {
   }, [location, navigate])
 
   const handleVerify = async () => {
-    if (otp.length !== 6) {
-      setError('Please enter the complete 6-digit OTP code')
+    if (otp.length !== 8) {
+      setError('Please enter the complete 8-digit OTP code')
       return
     }
 
@@ -91,11 +101,11 @@ export default function OTPVerification() {
     try {
       await resendOTP(contact, isPhone)
       setError(null)
-      // Show success message (you could use a toast here)
-      const message = isPhone 
+      const message = isPhone
         ? 'OTP code resent! Please check your phone for the SMS.'
         : 'OTP code resent! Please check your email.'
-      alert(message)
+      setResendMessage(message)
+      setIsResendDialogOpen(true)
     } catch (err: any) {
       setError(err.message || 'Failed to resend OTP. Please try again.')
     } finally {
@@ -117,7 +127,7 @@ export default function OTPVerification() {
         <div className="flex flex-col gap-2">
           <h2 className="heading-xl">OTP Verification</h2>
           <p className="body-text text-sm sm:text-base">
-            We sent a 6-digit code to verify your email address.
+            We sent an 8-digit code to verify your email address.
             {maskedContact && (
               <span className="block mt-1">Please type the OTP sent to {maskedContact}</span>
             )}
@@ -135,7 +145,7 @@ export default function OTPVerification() {
         <div className="flex flex-col items-center gap-6 sm:gap-8">
           <div className="flex justify-center w-full">
             <InputOTP 
-              maxLength={6}
+              maxLength={8}
               value={otp}
               onChange={(value) => {
                 setOtp(value)
@@ -144,30 +154,13 @@ export default function OTPVerification() {
               disabled={isVerifying}
             >
               <InputOTPGroup className="gap-3 sm:gap-4">
-                <InputOTPSlot 
-                  index={0} 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary" 
-                />
-                <InputOTPSlot 
-                  index={1} 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary" 
-                />
-                <InputOTPSlot 
-                  index={2} 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary" 
-                />
-                <InputOTPSlot 
-                  index={3} 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary" 
-                />
-                <InputOTPSlot 
-                  index={4} 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary" 
-                />
-                <InputOTPSlot 
-                  index={5} 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary" 
-                />
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <InputOTPSlot
+                    key={index}
+                    index={index}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 border-[#d0d5dd] text-xl focus:border-teal-primary"
+                  />
+                ))}
               </InputOTPGroup>
             </InputOTP>
           </div>
@@ -186,7 +179,7 @@ export default function OTPVerification() {
 
         <Button 
           onClick={handleVerify}
-          disabled={isVerifying || otp.length !== 6}
+          disabled={isVerifying || otp.length !== 8}
           className="w-full h-12 rounded-full bg-teal-primary text-white font-semibold hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isVerifying ? (
@@ -199,6 +192,18 @@ export default function OTPVerification() {
           )}
         </Button>
       </div>
+
+      <Dialog open={isResendDialogOpen} onOpenChange={setIsResendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>OTP Code Sent</DialogTitle>
+            <DialogDescription>{resendMessage}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsResendDialogOpen(false)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthLayout>
   )
 }
