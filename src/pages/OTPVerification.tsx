@@ -17,40 +17,31 @@ export default function OTPVerification() {
   const [isResending, setIsResending] = useState(false)
   const [contact, setContact] = useState<string>('')
   const [maskedContact, setMaskedContact] = useState<string>('')
-  const [isPhone, setIsPhone] = useState<boolean>(true)
+  const [isPhone, setIsPhone] = useState<boolean>(false)
 
   useEffect(() => {
-    // Get phone number or email from location state or sessionStorage
-    const statePhone = location.state?.phone
+    // Get email from location state or sessionStorage (we only use email for OTP now)
     const stateEmail = location.state?.email
-    const storedPhone = sessionStorage.getItem('signupPhone')
     const storedEmail = sessionStorage.getItem('signupEmail')
     
-    const userPhone = statePhone || storedPhone || ''
     const userEmail = stateEmail || storedEmail || ''
     
-    // Prefer phone, fallback to email
-    if (userPhone) {
-      setContact(userPhone)
-      setIsPhone(true)
-      // Mask phone for display (e.g., 081***1998)
-      const cleaned = userPhone.replace(/\D/g, '')
-      if (cleaned.length >= 4) {
-        const last4 = cleaned.slice(-4)
-        const masked = '***' + last4
+    if (userEmail) {
+      setContact(userEmail)
+      setIsPhone(false) // Always email, not phone
+      // Mask email for display (e.g., k**dans@gmail.com)
+      const [localPart, domain] = userEmail.split('@')
+      if (localPart.length > 2) {
+        // Show first 2 chars, mask the rest, then @domain
+        const visible = localPart.slice(0, 2)
+        const masked = visible + '***@' + domain
         setMaskedContact(masked)
       } else {
-        setMaskedContact('***' + cleaned)
+        // If email is too short, just show ***@domain
+        setMaskedContact('***@' + domain)
       }
-    } else if (userEmail) {
-      setContact(userEmail)
-      setIsPhone(false)
-      // Mask email for display (e.g., exa***@email.com)
-      const [localPart, domain] = userEmail.split('@')
-      const masked = localPart.slice(0, 3) + '***@' + domain
-      setMaskedContact(masked)
     } else {
-      // If no contact found, redirect back to signup
+      // If no email found, redirect back to signup
       navigate('/signup')
     }
   }, [location, navigate])

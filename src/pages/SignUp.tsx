@@ -83,15 +83,9 @@ export default function SignUp() {
         mdcn_number: selectedRole === 'doctor' ? data.mdcn_number : undefined,
       })
       
-      // Store phone number or email for OTP verification
-      if (data.phone) {
-        sessionStorage.setItem('signupPhone', data.phone)
-        navigate('/verify-otp', { state: { phone: data.phone } })
-      } else {
-        // Fallback to email if no phone provided
-        sessionStorage.setItem('signupEmail', data.email)
-        navigate('/verify-otp', { state: { email: data.email } })
-      }
+      // Store email for OTP verification (we only use email OTP)
+      sessionStorage.setItem('signupEmail', data.email)
+      navigate('/verify-otp', { state: { email: data.email } })
     } catch (err: any) {
       let errorMessage = err.message || 'Failed to create account. Please try again.'
       
@@ -102,6 +96,8 @@ export default function SignUp() {
         errorMessage = 'An account with this email already exists. Please sign in instead.'
       } else if (err.message?.includes('Invalid email')) {
         errorMessage = 'Please enter a valid email address.'
+      } else if (err.message?.includes('OTP') || err.message?.includes('Failed to send')) {
+        errorMessage = err.message + ' Make sure "Confirm email" is disabled in Supabase settings.'
       }
       
       setError(errorMessage)

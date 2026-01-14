@@ -74,22 +74,30 @@ export async function signUp(data: SignUpData): Promise<AuthResponse> {
     console.warn('Profile creation warning:', profileError)
   }
 
-  // Send OTP to phone number (preferred) or email for verification
-  // Note: If "Confirm email" is enabled in Supabase, it will send a confirmation link
-  // We send OTP separately - user should use the OTP code, not the confirmation link
+  // Send OTP to email for verification
+  // IMPORTANT: "Confirm email" must be OFF in Supabase for OTP to work
+  // If it's ON, Supabase will send confirmation links instead of allowing OTP
+  // Small delay to ensure user is created before sending OTP
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
   try {
-    if (data.phone) {
-      await sendOTP(data.phone, true) // Send SMS to phone
-    } else {
-      // For email OTP, we need to use signInWithOtp which works even if user exists
-      // This sends an OTP code instead of a confirmation link
-      await sendOTP(data.email, false) // Send email OTP
+    // Always send email OTP (we don't use phone OTP anymore)
+    // signInWithOtp works even if user exists - it sends an OTP code
+    const { error } = await supabase.auth.signInWithOtp({
+      email: data.email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth-success`,
+      },
+    })
+    
+    if (error) {
+      console.error('OTP send failed:', error)
+      throw new Error(`Failed to send OTP code: ${error.message}. Make sure "Confirm email" is disabled in Supabase settings.`)
     }
   } catch (otpError: any) {
-      // If OTP fails, it might be because user already exists or email confirmation is interfering
-      // Log the error - user might need to use the confirmation link instead
-      console.warn('OTP send warning:', otpError)
-      // Don't throw - let user proceed and they can use confirmation link if OTP doesn't work
+      // If OTP fails, throw the error so user knows
+      // Common reasons: "Confirm email" is enabled, rate limiting, or email service issue
+      throw otpError
   }
 
   return {
