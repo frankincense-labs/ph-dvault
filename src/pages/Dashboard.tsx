@@ -105,9 +105,9 @@ export default function Dashboard() {
         {/* Basic Info Card - Only show for patients */}
         {!isDoctor && (
           <div className="bg-navy-dark rounded-[8px] p-3 sm:p-4 md:p-6 text-white relative overflow-hidden w-full animate-in fade-in slide-in-from-top-4">
-            {/* Background SVGs simplified as styled divs for now or img if needed */}
+          {/* Background SVGs simplified as styled divs for now or img if needed */}
             <div className="flex flex-col gap-4 sm:gap-6 relative z-10">
-              <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
                 <span className="text-[13px] sm:text-[14px] font-semibold text-[#98a2b3]">Basic Info</span>
                 <button 
                   onClick={() => setDetailsVisible(!detailsVisible)} 
@@ -119,8 +119,8 @@ export default function Dashboard() {
                   ) : (
                     <EyeOff className="w-5 h-5 text-[#98a2b3] transition-all duration-200" />
                   )}
-                </button>
-              </div>
+              </button>
+            </div>
 
               <div className="flex items-center gap-3 sm:gap-4">
                 {profile?.avatar_url && (
@@ -134,7 +134,7 @@ export default function Dashboard() {
                   <span className="text-[15px] sm:text-[16px] font-medium truncate">
                     {profile?.full_name || user?.full_name || 'User'}
                   </span>
-                  {detailsVisible ? (
+                {detailsVisible ? (
                      (profile?.date_of_birth || profile?.gender) ? (
                        <div className="flex items-center gap-1 text-[12px] sm:text-[13px] text-[#98a2b3] flex-wrap">
                         {profile?.date_of_birth && (
@@ -142,7 +142,7 @@ export default function Dashboard() {
                             <span>{new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear()} years</span>
                             {profile?.gender && (
                               <>
-                                <span className="w-1 h-1 rounded-full bg-gray-400" />
+                    <span className="w-1 h-1 rounded-full bg-gray-400" />
                                 <span>{profile.gender}</span>
                               </>
                             )}
@@ -151,20 +151,20 @@ export default function Dashboard() {
                         {!profile?.date_of_birth && profile?.gender && (
                           <span>{profile.gender}</span>
                         )}
-                       </div>
+                   </div>
                      ) : (profile?.blood_group || profile?.genotype) ? (
                        <span className="text-[12px] sm:text-[13px] text-[#98a2b3]">View details below</span>
                      ) : (
                        <span className="text-[12px] sm:text-[13px] text-[#98a2b3]">No additional details available</span>
                      )
-                  ) : (
+                ) : (
                     <>
                       <span className="text-[12px] sm:text-[13px] text-[#98a2b3]">Your Details are hidden</span>
                       <p className="text-[11px] sm:text-[12px] text-gray-400 mt-1">Tap the eye icon above to view</p>
                     </>
-                  )}
-                </div>
+                )}
               </div>
+            </div>
 
               {detailsVisible && (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-2">
@@ -175,7 +175,7 @@ export default function Dashboard() {
                     </div>
                   )}
                   {profile?.genotype && (
-                    <div className="flex flex-col">
+                <div className="flex flex-col">
                       <span className="text-[13px] sm:text-[14px] text-[#98a2b3]">Genotype</span>
                       <span className="text-[13px] sm:text-[14px] font-medium">{profile.genotype}</span>
                     </div>
@@ -250,17 +250,17 @@ export default function Dashboard() {
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-teal-primary" />
-            </div>
+                   </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-[14px] text-red-600 mb-2">Error loading records</p>
               <p className="text-[12px] text-[#8d8989]">Please try again later</p>
-            </div>
+                   </div>
           ) : displayedRecords.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in">
               <div className="w-16 h-16 bg-[#f5f6f7] rounded-full flex items-center justify-center mb-4">
                 <img src="/assets/meds-icon.svg" className="w-8 h-8 opacity-50" alt="" />
-              </div>
+                </div>
               <h3 className="text-[16px] font-semibold text-black mb-2">
                 {isDoctor 
                   ? 'No patient records accessed yet'
@@ -285,7 +285,7 @@ export default function Dashboard() {
                   Access Patient Record
                 </button>
               )}
-            </div>
+             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
               {displayedRecords.map((record: MedicalRecord, index) => {
@@ -301,19 +301,19 @@ export default function Dashboard() {
                       animationDelay: `${index * 50}ms`,
                       animationFillMode: 'both'
                     }}
-                  >
+             >
                     <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
                       <div 
                         className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg flex items-center justify-center shrink-0"
                         style={{ backgroundColor: config.color + '20' }}
                       >
                         <img src={config.icon} className="w-4 sm:w-5 md:w-6 h-4 sm:h-5 md:h-6 invert opacity-70" alt="" />
-                      </div>
+                   </div>
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className="text-[14px] sm:text-[15px] md:text-[16px] font-medium truncate">{record.title}</span>
                         <span className="text-[10px] sm:text-[11px] md:text-[12px] text-[#868484] truncate">{dateRange}</span>
-                      </div>
-                    </div>
+                   </div>
+                </div>
                     <span className={`px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] md:text-[12px] font-semibold shrink-0 ml-1 sm:ml-2 capitalize ${
                       record.status === 'ongoing' 
                         ? 'bg-[#eef2f2] text-teal-primary' 
@@ -323,10 +323,10 @@ export default function Dashboard() {
                     }`}>
                       {record.status}
                     </span>
-                  </div>
+             </div>
                 )
               })}
-            </div>
+          </div>
           )}
         </div>
       </div>
