@@ -1,32 +1,43 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Delete, Check } from 'lucide-react'
+import { ChevronLeft, Delete, Check, Loader2 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { updateUserPIN } from '@/lib/api/account'
 
 export default function ChangePIN() {
   const navigate = useNavigate()
   const [pin, setPin] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleKeyPress = (val: string) => {
-    if (pin.length < 4) setPin(prev => prev + val)
+    if (pin.length < 4) {
+      setPin(prev => prev + val)
+      setError(null)
+    }
   }
 
   const handleDelete = () => {
     setPin(prev => prev.slice(0, -1))
+    setError(null)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (pin.length === 4) {
-      // Save PIN to localStorage
+      setIsLoading(true)
+      setError(null)
+      
       try {
-        localStorage.setItem('user_pin', pin)
+        await updateUserPIN(pin)
         setShowSuccess(true)
-      } catch (error) {
-        console.error('Failed to save PIN to localStorage:', error)
-        alert('Failed to save PIN. Please try again.')
+      } catch (err: any) {
+        console.error('Failed to save PIN:', err)
+        setError(err.message || 'Failed to save PIN. Please try again.')
+      } finally {
+        setIsLoading(false)
       }
     }
   }
@@ -81,14 +92,27 @@ export default function ChangePIN() {
               <Delete className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm text-center">
+              {error}
+            </div>
+          )}
         </div>
 
         <Button 
-          disabled={pin.length < 4}
+          disabled={pin.length < 4 || isLoading}
           onClick={handleSave}
           className="w-full h-12 rounded-full bg-teal-primary text-white font-semibold mt-auto disabled:opacity-50"
         >
-          Save PIN
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save PIN'
+          )}
         </Button>
       </div>
 

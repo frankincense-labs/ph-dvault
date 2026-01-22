@@ -1,17 +1,18 @@
 import { useState } from 'react'
-import { ChevronLeft, Trash2, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/store/useAuthStore'
+import { deleteAccount } from '@/lib/api/account'
 
 export default function DeleteAccount() {
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
   const [step, setStep] = useState(1) // 1: Warning, 2: Confirmation
   const [reason, setReason] = useState('')
   const [confirmText, setConfirmText] = useState('')
   const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const reasons = [
     'I no longer need this service',
@@ -23,23 +24,28 @@ export default function DeleteAccount() {
 
   const handleDelete = async () => {
     if (confirmText.toLowerCase() !== 'delete') {
-      alert('Please type "DELETE" to confirm')
+      setError('Please type "DELETE" to confirm')
       return
     }
 
     if (!password) {
-      alert('Please enter your password')
+      setError('Please enter your password')
       return
     }
 
-    // TODO: Call API to delete account
-    // await deleteAccountAPI(password, reason)
-    
-    // Logout and redirect
-    await logout()
-    navigate('/signin', { 
-      state: { message: 'Your account and all data have been permanently deleted.' }
-    })
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await deleteAccount(password, reason)
+      navigate('/signin', { 
+        state: { message: 'Your account and all data have been permanently deleted.' }
+      })
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete account. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -123,7 +129,10 @@ export default function DeleteAccount() {
                 <input
                   type="text"
                   value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmText(e.target.value)
+                    setError(null)
+                  }}
                   placeholder="DELETE"
                   className="w-full px-4 py-3 border-2 border-[#f5f6f7] rounded-lg focus:outline-none focus:border-teal-primary text-[14px]"
                 />
@@ -134,20 +143,36 @@ export default function DeleteAccount() {
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    setError(null)
+                  }}
                   placeholder="Enter password"
                   className="w-full px-4 py-3 border-2 border-[#f5f6f7] rounded-lg focus:outline-none focus:border-teal-primary text-[14px]"
                 />
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <Button 
                 onClick={handleDelete}
-                disabled={confirmText.toLowerCase() !== 'delete' || !password}
+                disabled={confirmText.toLowerCase() !== 'delete' || !password || isLoading}
                 className="w-full h-12 rounded-full bg-[#d42620] text-white font-semibold disabled:opacity-50"
               >
-                Permanently Delete Account
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Permanently Delete Account'
+                )}
               </Button>
               <Button 
                 variant="ghost"

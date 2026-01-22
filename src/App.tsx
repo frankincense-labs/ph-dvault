@@ -30,6 +30,7 @@ import DeactivateAccount from './pages/DeactivateAccount'
 import DeleteAccount from './pages/DeleteAccount'
 import EditProfile from './pages/EditProfile'
 import SharedLink from './pages/SharedLink'
+import EmergencyMode from './pages/EmergencyMode'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -45,6 +46,8 @@ function App() {
         <Route path="/verify-otp" element={<OTPVerification />} />
         <Route path="/verify-faceid" element={<FaceIDVerification />} />
         <Route path="/auth-success" element={<AuthSuccess />} />
+        {/* Emergency Mode - Public, shows cached data */}
+        <Route path="/emergency" element={<EmergencyMode />} />
         {/* Shared Link Route - Public but validates token */}
         <Route path="/shared/:token" element={<SharedLink />} />
 

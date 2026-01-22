@@ -1,20 +1,19 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Upload, Calendar as CalendarIcon, X, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, Upload, X, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { format } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { MuiDatePicker } from '@/components/ui/mui-date-picker'
 import { useAuthStore } from '@/store/useAuthStore'
-import { createRecord, uploadFile } from '@/lib/api/records'
+import { createRecord, updateRecord, uploadFile } from '@/lib/api/records'
+import type { MedicalRecord } from '@/types/database'
 
 const pastTreatmentSchema = z.object({
   name: z.string().min(1, 'Treatment name is required'),
@@ -29,12 +28,17 @@ type PastTreatmentFormData = z.infer<typeof pastTreatmentSchema>
 
 export default function AddPastTreatments() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('edit')
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null)
 
   const form = useForm<PastTreatmentFormData>({
     resolver: zodResolver(pastTreatmentSchema),
@@ -45,6 +49,44 @@ export default function AddPastTreatments() {
       notes: '',
     },
   })
+
+  // Load editing record if in edit mode
+  useEffect(() => {
+    if (editId) {
+      const editingRecordStr = sessionStorage.getItem('editingRecord')
+      if (editingRecordStr) {
+        try {
+          const record = JSON.parse(editingRecordStr) as MedicalRecord
+          if (record.id === editId) {
+            setIsEditMode(true)
+            setEditingRecord(record)
+            
+            // Populate form
+            form.setValue('name', record.title)
+            form.setValue('notes', record.description || '')
+            
+            if (record.metadata) {
+              form.setValue('hospital', record.metadata.hospital || '')
+              form.setValue('doctor', record.metadata.doctor || '')
+            }
+            
+            if (record.start_date) {
+              form.setValue('start_date', new Date(record.start_date))
+            }
+            if (record.end_date) {
+              form.setValue('end_date', new Date(record.end_date))
+            }
+            
+            if (record.file_url) {
+              setExistingFileUrl(record.file_url)
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing editing record:', err)
+        }
+      }
+    }
+  }, [editId, form])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -61,6 +103,7 @@ export default function AddPastTreatments() {
         return
       }
       setSelectedFile(file)
+      setExistingFileUrl(null)
       setError(null)
     } else {
       setSelectedFile(null)
@@ -69,6 +112,7 @@ export default function AddPastTreatments() {
 
   const handleRemoveFile = () => {
     setSelectedFile(null)
+    setExistingFileUrl(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -97,9 +141,10 @@ export default function AddPastTreatments() {
         }
       }
 
-      // Upload file if selected
-      let fileUrl: string | undefined
+      let fileUrl = existingFileUrl || undefined
       let fileHash: string | undefined
+
+      // Upload file if selected
       if (selectedFile) {
         try {
           const uploadResult = await uploadFile(user.id, selectedFile, 'past_treatments')
@@ -113,9 +158,8 @@ export default function AddPastTreatments() {
         }
       }
 
-      // Create record
-      await createRecord(user.id, {
-        category: 'past_treatments',
+      const recordData = {
+        category: 'past_treatments' as const,
         title: data.name,
         description: data.notes || null,
         file_url: fileUrl,
@@ -127,16 +171,25 @@ export default function AddPastTreatments() {
           hospital: data.hospital || null,
           doctor: data.doctor || null,
         },
-      })
+      }
+
+      if (isEditMode && editingRecord) {
+        await updateRecord(editingRecord.id, user.id, recordData)
+      } else {
+        await createRecord(user.id, recordData)
+      }
 
       // Invalidate and refetch records
       queryClient.invalidateQueries({ queryKey: ['records', user.id] })
 
+      // Clear editing data
+      sessionStorage.removeItem('editingRecord')
+
       // Navigate back to dashboard
       navigate('/dashboard')
     } catch (err: any) {
-      console.error('Error adding past treatment:', err)
-      setError(err.message || 'Failed to add past treatment. Please try again.')
+      console.error('Error saving past treatment:', err)
+      setError(err.message || 'Failed to save past treatment. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -149,7 +202,9 @@ export default function AddPastTreatments() {
           <button onClick={() => navigate(-1)} className="p-2 bg-[#f5f6f7] rounded-lg hover:bg-[#eeeffd] transition-colors">
             <ChevronLeft className="w-5 h-5 text-[#98a2b3]" />
           </button>
-          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">Add Past Treatments</h1>
+          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">
+            {isEditMode ? 'Edit Past Treatment' : 'Add Past Treatments'}
+          </h1>
         </div>
 
         <Form {...form}>
@@ -159,7 +214,7 @@ export default function AddPastTreatments() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#7a828f] text-[14px]">Name</FormLabel>
+                  <FormLabel className="text-[#7a828f] text-[14px]">Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="e.g. Malaria treatment" 
@@ -177,7 +232,7 @@ export default function AddPastTreatments() {
               name="hospital"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#7a828f] text-[14px]">Hospital/Clinic Name</FormLabel>
+                  <FormLabel className="text-[#7a828f] text-[14px]">Hospital/Clinic Name (Optional)</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="e.g. Well Vine Hospital" 
@@ -196,32 +251,14 @@ export default function AddPastTreatments() {
                 name="start_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Start Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-left font-normal border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 hover:bg-transparent"
-                          >
-                            {field.value ? (
-                              format(field.value, 'dd/MM/yyyy')
-                            ) : (
-                              <span className="text-[#98a2b3]">DD/MM/YYYY</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 text-[#667185]" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormLabel className="text-[#7a828f] text-[14px]">Start Date <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <MuiDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="DD/MM/YYYY"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -233,31 +270,13 @@ export default function AddPastTreatments() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[#7a828f] text-[14px]">End Date (Optional)</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-left font-normal border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 hover:bg-transparent"
-                          >
-                            {field.value ? (
-                              format(field.value, 'dd/MM/yyyy')
-                            ) : (
-                              <span className="text-[#98a2b3]">DD/MM/YYYY</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 text-[#667185]" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <MuiDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="DD/MM/YYYY"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -269,7 +288,7 @@ export default function AddPastTreatments() {
               name="doctor"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#7a828f] text-[14px]">Attending Doctor</FormLabel>
+                  <FormLabel className="text-[#7a828f] text-[14px]">Attending Doctor (Optional)</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="e.g. Dr. Okon" 
@@ -312,30 +331,30 @@ export default function AddPastTreatments() {
               />
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center border-2 border-dashed border-[#d0d5dd] rounded-xl py-10 bg-[#f5f6f7] hover:bg-[#eeeffd] hover:border-teal-primary/50 transition-all cursor-pointer"
+                className="flex items-center justify-center border-2 border-dashed border-[#d0d5dd] rounded-lg py-6 bg-[#f5f6f7] hover:bg-[#eeeffd] hover:border-teal-primary/50 transition-all cursor-pointer"
               >
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="w-6 h-6 text-[#98a2b3]" />
                   <span className="text-[14px] text-black font-semibold">
-                    {selectedFile ? selectedFile.name : 'Upload medical report here'}
+                    {selectedFile ? selectedFile.name : existingFileUrl ? 'File attached' : 'Upload medical report here'}
                   </span>
                   {selectedFile && (
-                    <>
-                      <span className="text-[12px] text-[#8d8989]">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveFile()
-                        }}
-                        className="text-[12px] text-red-600 hover:text-red-700 mt-1 flex items-center gap-1"
-                      >
-                        <X className="w-3 h-3" />
-                        Remove file
-                      </button>
-                    </>
+                    <span className="text-[12px] text-[#8d8989]">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  )}
+                  {(selectedFile || existingFileUrl) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveFile()
+                      }}
+                      className="text-[12px] text-red-600 hover:text-red-700 mt-1 flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove file
+                    </button>
                   )}
                 </div>
               </div>
@@ -357,10 +376,10 @@ export default function AddPastTreatments() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {isEditMode ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
-                'Save'
+                isEditMode ? 'Update' : 'Save'
               )}
             </Button>
           </form>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { PhoneInput, isValidPhoneNumber } from '@/components/ui/phone-input'
 import AuthLayout from '@/components/AuthLayout'
 import { useAuthStore } from '@/store/useAuthStore'
 import { Eye, EyeOff } from 'lucide-react'
@@ -24,7 +25,11 @@ const createSignUpSchema = (isDoctor: boolean) => z.object({
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   confirmPassword: z.string(),
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z.string()
+    .min(1, 'Phone number is required')
+    .refine((val) => isValidPhoneNumber(val), {
+      message: 'Please enter a valid phone number'
+    }),
   mdcn_number: isDoctor 
     ? z.string()
         .min(1, 'MDCN number is required for doctors')
@@ -196,7 +201,7 @@ export default function SignUp() {
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="label-text">Full Name</FormLabel>
+                    <FormLabel className="label-text">Full Name <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
                       <Input 
                         type="text"
@@ -216,7 +221,7 @@ export default function SignUp() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="label-text">Email Address</FormLabel>
+                    <FormLabel className="label-text">Email Address <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
                       <Input 
                         type="email"
@@ -230,19 +235,19 @@ export default function SignUp() {
                 )}
               />
 
-              {/* Phone Field (Optional) */}
+              {/* Phone Field with International Support */}
               <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="label-text">Phone Number</FormLabel>
+                    <FormLabel className="label-text">Phone Number <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
-                      <Input 
-                        type="tel"
-                        placeholder="08123456789"
-                        className="h-12 rounded-full border-[#cbd5e1] body-text-medium"
-                        {...field}
+                      <PhoneInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Enter phone number"
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -281,7 +286,7 @@ export default function SignUp() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="label-text">Password</FormLabel>
+                    <FormLabel className="label-text">Password <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 
@@ -294,11 +299,12 @@ export default function SignUp() {
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#98a2b3] hover:text-[#667185]"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           {showPassword ? (
-                            <EyeOff className="w-5 h-5" />
-                          ) : (
                             <Eye className="w-5 h-5" />
+                          ) : (
+                            <EyeOff className="w-5 h-5" />
                           )}
                         </button>
                       </div>
@@ -317,7 +323,7 @@ export default function SignUp() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="label-text">Confirm Password</FormLabel>
+                    <FormLabel className="label-text">Confirm Password <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 
@@ -330,11 +336,12 @@ export default function SignUp() {
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#98a2b3] hover:text-[#667185]"
+                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                         >
                           {showConfirmPassword ? (
-                            <EyeOff className="w-5 h-5" />
-                          ) : (
                             <Eye className="w-5 h-5" />
+                          ) : (
+                            <EyeOff className="w-5 h-5" />
                           )}
                         </button>
                       </div>

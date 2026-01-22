@@ -57,8 +57,8 @@ export default function OTPVerification() {
   }, [location, navigate])
 
   const handleVerify = async () => {
-    if (otp.length !== 8) {
-      setError('Please enter the complete 8-digit OTP code')
+    if (otp.length !== 6) {
+      setError('Please enter the complete 6-digit OTP code')
       return
     }
 
@@ -127,7 +127,7 @@ export default function OTPVerification() {
         <div className="flex flex-col gap-2">
           <h2 className="heading-xl">OTP Verification</h2>
           <p className="body-text text-sm sm:text-base">
-            We sent an 8-digit code to verify your email address.
+            We sent a 6-digit code to verify your email address.
             {maskedContact && (
               <span className="block mt-1">Please type the OTP sent to {maskedContact}</span>
             )}
@@ -145,7 +145,7 @@ export default function OTPVerification() {
         <div className="flex flex-col items-center gap-6 sm:gap-8">
           <div className="flex justify-center w-full">
             <InputOTP 
-              maxLength={8}
+              maxLength={6}
               value={otp}
               onChange={(value) => {
                 setOtp(value)
@@ -154,7 +154,7 @@ export default function OTPVerification() {
               disabled={isVerifying}
             >
               <InputOTPGroup className="gap-3 sm:gap-4">
-                {Array.from({ length: 8 }).map((_, index) => (
+                {Array.from({ length: 6 }).map((_, index) => (
                   <InputOTPSlot
                     key={index}
                     index={index}
@@ -179,7 +179,7 @@ export default function OTPVerification() {
 
         <Button 
           onClick={handleVerify}
-          disabled={isVerifying || otp.length !== 8}
+          disabled={isVerifying || otp.length !== 6}
           className="w-full h-12 rounded-full bg-teal-primary text-white font-semibold hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isVerifying ? (

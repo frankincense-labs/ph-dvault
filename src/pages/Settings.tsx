@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronRight, LogOut, Shield, Key, HelpCircle, FileText, UserMinus, Trash2 } from 'lucide-react'
+import { ChevronRight, LogOut, Shield, Key, HelpCircle, FileText, UserMinus, Trash2, AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Switch } from '@/components/ui/switch'
@@ -49,6 +49,7 @@ export default function Settings() {
       title: 'General',
       items: [
         { label: 'Access History', icon: FileText, path: '/settings/history' },
+        { label: 'Emergency Mode', icon: AlertTriangle, path: '/emergency', color: '#dc2626' },
         { label: 'Enable Biometrics', icon: Shield, isSwitch: true },
         { label: 'Password & PIN', icon: Key, path: '/settings/security' },
       ]

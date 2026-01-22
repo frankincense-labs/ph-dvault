@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS share_tokens (
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   method TEXT NOT NULL CHECK (method IN ('link', 'code')),
   token TEXT NOT NULL UNIQUE,
+  pin TEXT, -- 5-digit verification PIN for additional security
   record_ids UUID[] NOT NULL, -- Array of record IDs to share
   expires_at TIMESTAMPTZ NOT NULL,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'expired', 'revoked')),
@@ -121,6 +122,18 @@ CREATE POLICY "Users can delete their own records"
   ON medical_records FOR DELETE
   USING (auth.uid() = user_id);
 
+-- Allow reading records that are part of an active, non-expired share token
+CREATE POLICY "Allow reading shared records via active token"
+  ON medical_records FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM share_tokens 
+      WHERE share_tokens.status = 'active' 
+      AND share_tokens.expires_at > NOW()
+      AND medical_records.id = ANY(share_tokens.record_ids)
+    )
+  );
+
 -- Share Tokens policies
 CREATE POLICY "Users can view their own share tokens"
   ON share_tokens FOR SELECT
@@ -138,6 +151,18 @@ CREATE POLICY "Users can update their own share tokens"
 CREATE POLICY "Doctors can view share tokens they accessed"
   ON share_tokens FOR SELECT
   USING (auth.uid() = accessed_by);
+
+-- CRITICAL: Allow any authenticated user to validate active share tokens
+-- This enables doctors to access shared records using the token
+CREATE POLICY "Anyone can validate active share tokens"
+  ON share_tokens FOR SELECT
+  USING (status = 'active' AND expires_at > NOW());
+
+-- Allow doctors to update share tokens when accessing them (to set accessed_by/accessed_at)
+CREATE POLICY "Authenticated users can mark tokens as accessed"
+  ON share_tokens FOR UPDATE
+  USING (status = 'active' AND expires_at > NOW())
+  WITH CHECK (status = 'active');
 
 -- Access Logs policies
 CREATE POLICY "Users can view their own access logs"
@@ -190,3 +215,64 @@ CREATE TRIGGER on_auth_user_created
 -- Bucket name: medical-files
 -- Public: false (private bucket)
 -- File size limit: 10MB (adjust as needed)
+
+-- =====================================================
+-- MIGRATION: If you already have the database set up,
+-- run these SQL commands in your Supabase SQL Editor:
+-- =====================================================
+
+/*
+-- 1. Add PIN column to share_tokens table
+ALTER TABLE share_tokens ADD COLUMN IF NOT EXISTS pin TEXT;
+
+-- 2. Allow any authenticated user to validate active share tokens
+CREATE POLICY "Anyone can validate active share tokens"
+  ON share_tokens FOR SELECT
+  USING (status = 'active' AND expires_at > NOW());
+
+-- 3. Allow doctors to update share tokens when accessing them
+CREATE POLICY "Authenticated users can mark tokens as accessed"
+  ON share_tokens FOR UPDATE
+  USING (status = 'active' AND expires_at > NOW())
+  WITH CHECK (status = 'active');
+
+-- 4. Allow reading records that are part of an active share token
+CREATE POLICY "Allow reading shared records via active token"
+  ON medical_records FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM share_tokens 
+      WHERE share_tokens.status = 'active' 
+      AND share_tokens.expires_at > NOW()
+      AND medical_records.id = ANY(share_tokens.record_ids)
+    )
+  );
+*/
+
+-- =====================================================
+-- MIGRATION 2: Account management features
+-- Run these SQL commands to enable deactivation, deletion, and PIN features
+-- =====================================================
+
+/*
+-- 1. Add account management columns to profiles table
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS app_pin_hash TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_deactivated BOOLEAN DEFAULT FALSE;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS deactivation_reason TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;
+
+-- 2. Add policy to allow users to delete their own profile
+CREATE POLICY "Users can delete their own profile"
+  ON profiles FOR DELETE
+  USING (auth.uid() = id);
+
+-- 3. Add policy to allow users to delete their own share tokens
+CREATE POLICY "Users can delete their own share tokens"
+  ON share_tokens FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- 4. Add policy to allow users to delete their own access logs
+CREATE POLICY "Users can delete their own access logs"
+  ON access_logs FOR DELETE
+  USING (auth.uid() = user_id);
+*/

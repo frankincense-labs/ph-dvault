@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, Upload, X, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useAuthStore } from '@/store/useAuthStore'
-import { createRecord, uploadFile } from '@/lib/api/records'
+import { createRecord, updateRecord, uploadFile } from '@/lib/api/records'
+import type { MedicalRecord } from '@/types/database'
 
 const labResultSchema = z.object({
   name: z.string().min(1, 'Lab result name is required'),
@@ -22,12 +23,17 @@ type LabResultFormData = z.infer<typeof labResultSchema>
 
 export default function AddLabResults() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('edit')
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null)
 
   const form = useForm<LabResultFormData>({
     resolver: zodResolver(labResultSchema),
@@ -36,6 +42,33 @@ export default function AddLabResults() {
       notes: '',
     },
   })
+
+  // Load editing record if in edit mode
+  useEffect(() => {
+    if (editId) {
+      const editingRecordStr = sessionStorage.getItem('editingRecord')
+      if (editingRecordStr) {
+        try {
+          const record = JSON.parse(editingRecordStr) as MedicalRecord
+          if (record.id === editId) {
+            setIsEditMode(true)
+            setEditingRecord(record)
+            
+            // Populate form
+            form.setValue('name', record.title)
+            form.setValue('notes', record.description || '')
+            
+            // Set existing file URL
+            if (record.file_url) {
+              setExistingFileUrl(record.file_url)
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing editing record:', err)
+        }
+      }
+    }
+  }, [editId, form])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -56,6 +89,7 @@ export default function AddLabResults() {
       }
       
       setSelectedFile(file)
+      setExistingFileUrl(null)
       setError(null)
     } else {
       setSelectedFile(null)
@@ -64,6 +98,7 @@ export default function AddLabResults() {
 
   const handleRemoveFile = () => {
     setSelectedFile(null)
+    setExistingFileUrl(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -75,8 +110,8 @@ export default function AddLabResults() {
       return
     }
 
-    // File is required for lab results
-    if (!selectedFile) {
+    // File is required for new lab results (not edits with existing file)
+    if (!isEditMode && !selectedFile) {
       setError('Please upload a lab result file')
       return
     }
@@ -85,38 +120,49 @@ export default function AddLabResults() {
     setError(null)
 
     try {
-      // Upload file
-      let fileUrl: string | undefined
+      let fileUrl = existingFileUrl || undefined
       let fileHash: string | undefined
-      try {
-        const uploadResult = await uploadFile(user.id, selectedFile, 'lab_results')
-        fileUrl = uploadResult.url
-        fileHash = uploadResult.hash
-      } catch (uploadError: any) {
-        console.error('File upload error:', uploadError)
-        setError(uploadError.message || 'Failed to upload file. Please check your storage bucket settings.')
-        setIsSubmitting(false)
-        return
+
+      // Upload new file if selected
+      if (selectedFile) {
+        try {
+          const uploadResult = await uploadFile(user.id, selectedFile, 'lab_results')
+          fileUrl = uploadResult.url
+          fileHash = uploadResult.hash
+        } catch (uploadError: any) {
+          console.error('File upload error:', uploadError)
+          setError(uploadError.message || 'Failed to upload file. Please check your storage bucket settings.')
+          setIsSubmitting(false)
+          return
+        }
       }
 
-      // Create record
-      await createRecord(user.id, {
-        category: 'lab_results',
+      const recordData = {
+        category: 'lab_results' as const,
         title: data.name,
-        description: data.notes || undefined,
+        description: data.notes || null,
         file_url: fileUrl,
         file_hash: fileHash,
-        status: 'completed',
-      })
+        status: 'completed' as const,
+      }
+
+      if (isEditMode && editingRecord) {
+        await updateRecord(editingRecord.id, user.id, recordData)
+      } else {
+        await createRecord(user.id, recordData)
+      }
 
       // Invalidate and refetch records
       queryClient.invalidateQueries({ queryKey: ['records', user.id] })
 
+      // Clear editing data
+      sessionStorage.removeItem('editingRecord')
+
       // Navigate back to dashboard
       navigate('/dashboard')
     } catch (err: any) {
-      console.error('Error adding lab result:', err)
-      setError(err.message || 'Failed to add lab result. Please try again.')
+      console.error('Error saving lab result:', err)
+      setError(err.message || 'Failed to save lab result. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -129,7 +175,9 @@ export default function AddLabResults() {
           <button onClick={() => navigate(-1)} className="p-2 bg-[#f5f6f7] rounded-lg hover:bg-[#eeeffd] transition-colors">
             <ChevronLeft className="w-5 h-5 text-[#98a2b3]" />
           </button>
-          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">Add Lab Results</h1>
+          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">
+            {isEditMode ? 'Edit Lab Result' : 'Add Lab Results'}
+          </h1>
         </div>
 
         <Form {...form}>
@@ -139,7 +187,7 @@ export default function AddLabResults() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#7a828f] text-[14px]">Name</FormLabel>
+                  <FormLabel className="text-[#7a828f] text-[14px]">Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="e.g. My lab result 1" 
@@ -171,7 +219,9 @@ export default function AddLabResults() {
             />
 
             <div className="flex flex-col gap-4 mt-4">
-              <Label className="text-[#7a828f] text-[14px]">Upload Lab Result *</Label>
+              <Label className="text-[#7a828f] text-[14px]">
+                Upload Lab Result {!isEditMode && !existingFileUrl && <span className="text-red-500">*</span>}
+              </Label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -182,30 +232,30 @@ export default function AddLabResults() {
               />
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center border-2 border-dashed border-[#d0d5dd] rounded-xl py-10 bg-[#f5f6f7] hover:bg-[#eeeffd] hover:border-teal-primary/50 transition-all cursor-pointer"
+                className="flex items-center justify-center border-2 border-dashed border-[#d0d5dd] rounded-lg py-6 bg-[#f5f6f7] hover:bg-[#eeeffd] hover:border-teal-primary/50 transition-all cursor-pointer"
               >
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="w-6 h-6 text-[#98a2b3]" />
                   <span className="text-[14px] text-black font-semibold">
-                    {selectedFile ? selectedFile.name : 'Upload lab result here'}
+                    {selectedFile ? selectedFile.name : existingFileUrl ? 'File attached' : 'Upload lab result here'}
                   </span>
                   {selectedFile && (
-                    <>
-                      <span className="text-[12px] text-[#8d8989]">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveFile()
-                        }}
-                        className="text-[12px] text-red-600 hover:text-red-700 mt-1 flex items-center gap-1"
-                      >
-                        <X className="w-3 h-3" />
-                        Remove file
-                      </button>
-                    </>
+                    <span className="text-[12px] text-[#8d8989]">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  )}
+                  {(selectedFile || existingFileUrl) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveFile()
+                      }}
+                      className="text-[12px] text-red-600 hover:text-red-700 mt-1 flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove file
+                    </button>
                   )}
                 </div>
               </div>
@@ -221,16 +271,16 @@ export default function AddLabResults() {
 
             <Button 
               type="submit"
-              disabled={isSubmitting || !selectedFile}
+              disabled={isSubmitting || (!isEditMode && !selectedFile && !existingFileUrl)}
               className="w-full h-12 rounded-full bg-teal-primary text-white font-semibold mt-10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {isEditMode ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
-                'Save'
+                isEditMode ? 'Update' : 'Save'
               )}
             </Button>
           </form>

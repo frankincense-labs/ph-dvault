@@ -9,16 +9,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useAuthStore } from '@/store/useAuthStore'
-import { isValidMDCNFormat } from '@/lib/api/mdcn'
+import { isValidMDCNFormat, normalizeMDCN } from '@/lib/api/mdcn'
 
 const doctorSignUpSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   mdcn_number: z.string()
-    .min(1, 'MDCN number is required')
+    .min(1, 'MDCN folio number is required')
     .refine((val) => isValidMDCNFormat(val), {
-      message: 'Invalid MDCN number format. Examples: MDCN/12345/2020 or 12345/2020'
+      message: 'Please enter a valid MDCN folio number. Example: MDCN/R/90566 or 90566'
     }),
   specialization: z.string().min(1, 'Specialization is required'),
   hospital_name: z.string().optional(),
@@ -47,12 +47,15 @@ export default function DoctorSignUp() {
   const onSubmit = async (data: z.infer<typeof doctorSignUpSchema>) => {
     try {
       setError(null)
+      // Normalize MDCN number to canonical format: MDCN/R/<digits>
+      const normalizedMDCN = normalizeMDCN(data.mdcn_number)
+      
       await signUp({
         email: data.email,
         password: data.password,
         full_name: data.full_name,
         role: 'doctor',
-        mdcn_number: data.mdcn_number,
+        mdcn_number: normalizedMDCN,
       })
       navigate('/verify-faceid')
     } catch (err: any) {
@@ -106,7 +109,9 @@ export default function DoctorSignUp() {
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Full name</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">
+                      Full name <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Enter your full name"
@@ -124,7 +129,9 @@ export default function DoctorSignUp() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Email</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">
+                      Email <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         type="email"
@@ -143,7 +150,9 @@ export default function DoctorSignUp() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Password</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">
+                      Password <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 
@@ -156,11 +165,12 @@ export default function DoctorSignUp() {
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-0 top-1/2 -translate-y-1/2 text-[#667185]"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
                             <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
                           )}
                         </button>
                       </div>
@@ -175,14 +185,23 @@ export default function DoctorSignUp() {
                 name="mdcn_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">MDCN Number</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">
+                      MDCN Folio Number <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter your MDCN number"
+                        placeholder="MDCN/R/90566 or 90566"
                         className="border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 focus-visible:ring-0 focus-visible:border-teal-primary text-[#101928]"
                         {...field}
+                        onChange={(e) => {
+                          // Auto-trim and uppercase as user types
+                          field.onChange(e.target.value.trim().toUpperCase())
+                        }}
                       />
                     </FormControl>
+                    <p className="text-[12px] text-[#667185] mt-1">
+                      You may enter the folio with or without the MDCN/R/ prefix.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -193,7 +212,9 @@ export default function DoctorSignUp() {
                 name="specialization"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Specialty</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">
+                      Specialty <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 

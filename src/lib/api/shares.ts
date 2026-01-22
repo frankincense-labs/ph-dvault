@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { logAccess } from './records'
 import type { ShareToken, ShareMethod } from '@/types/database'
 
 export interface CreateShareData {
@@ -7,23 +8,23 @@ export interface CreateShareData {
   expires_in_hours?: number // Default 1 hour
 }
 
-// Generate unique token
-function generateToken(method: ShareMethod): string {
-  if (method === 'code') {
-    // Generate 5-digit code
-    return Math.floor(10000 + Math.random() * 90000).toString()
-  } else {
-    // Generate UUID-like token for links
-    return crypto.randomUUID()
-  }
+// Generate unique token (UUID for links)
+function generateToken(): string {
+  return crypto.randomUUID()
 }
 
-// Create share token
+// Generate 5-digit verification PIN
+function generatePIN(): string {
+  return Math.floor(10000 + Math.random() * 90000).toString()
+}
+
+// Create share token with PIN
 export async function createShare(
   userId: string,
   shareData: CreateShareData
 ): Promise<ShareToken> {
-  const token = generateToken(shareData.method)
+  const token = generateToken()
+  const pin = generatePIN() // Always generate a PIN for verification
   const expiresInHours = shareData.expires_in_hours || 1
   const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString()
 
@@ -33,6 +34,7 @@ export async function createShare(
       user_id: userId,
       method: shareData.method,
       token,
+      pin,
       record_ids: shareData.record_ids,
       expires_at: expiresAt,
       status: 'active',
@@ -41,6 +43,15 @@ export async function createShare(
     .single()
 
   if (error) throw error
+
+  // Log the share creation
+  await logAccess(userId, 'share', undefined, {
+    shareId: data.id,
+    method: shareData.method,
+    recordCount: shareData.record_ids.length,
+    expiresInHours: expiresInHours,
+  })
+
   return data as ShareToken
 }
 
@@ -116,15 +127,21 @@ export async function revokeShare(shareId: string, userId: string) {
   if (error) throw error
 }
 
-// Access shared records (for doctors)
+// Access shared records (for doctors) - requires both token and PIN
 export async function accessSharedRecords(
   token: string,
-  doctorUserId: string
+  doctorUserId: string,
+  pin?: string
 ): Promise<{ records: any[]; shareToken: ShareToken }> {
   const shareToken = await getShareByToken(token)
   
   if (!shareToken) {
     throw new Error('Invalid or expired share token')
+  }
+
+  // Verify PIN if the share has one
+  if (shareToken.pin && shareToken.pin !== pin) {
+    throw new Error('Invalid verification PIN')
   }
 
   // Mark as accessed
@@ -144,10 +161,23 @@ export async function accessSharedRecords(
 
   if (error) throw error
 
+  // Log the access by doctor
+  await logAccess(doctorUserId, 'access_shared', undefined, {
+    shareId: shareToken.id,
+    patientId: shareToken.user_id,
+    recordCount: records?.length || 0,
+  })
+
   return {
     records: records || [],
     shareToken,
   }
+}
+
+// Check if a share token requires PIN verification
+export async function checkShareRequiresPIN(token: string): Promise<boolean> {
+  const shareToken = await getShareByToken(token)
+  return shareToken?.pin !== null && shareToken?.pin !== undefined
 }
 
 // Generate share link

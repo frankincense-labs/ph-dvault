@@ -185,47 +185,68 @@ export default function GenerateLink() {
             </Button>
           </>
         ) : (
-          <div className="flex flex-col items-center gap-6 sm:gap-10 pt-4 sm:pt-10">
-            <div className="flex flex-col items-center gap-6 sm:gap-8 text-center bg-white p-6 sm:p-8 rounded-xl border border-[#f5f6f7] shadow-sm w-full">
+          <div className="flex flex-col items-center gap-6 sm:gap-8 pt-4 sm:pt-6">
+            {/* Success Card */}
+            <div className="flex flex-col items-center gap-5 text-center bg-white p-6 sm:p-8 rounded-xl border border-[#f5f6f7] shadow-sm w-full">
               <div className="w-14 h-14 sm:w-16 sm:h-16 bg-teal-primary rounded-full flex items-center justify-center text-white">
                 <LinkIcon className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
-              <div className="flex flex-col gap-2">
-                <h2 className="text-[16px] sm:text-[18px] font-bold text-black">Link Generated!</h2>
-                <p className="text-[13px] sm:text-[14px] text-[#8d8989]">Below is the link to share to viewers.</p>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-[16px] sm:text-[18px] font-bold text-black">Share Created!</h2>
+                <p className="text-[13px] sm:text-[14px] text-[#8d8989]">Share both the link AND PIN with your doctor.</p>
               </div>
+            </div>
+
+            {/* Link Section */}
+            <div className="flex flex-col gap-3 w-full">
+              <h3 className="text-[14px] font-semibold text-[#7a828f]">Access Link</h3>
               <div className="flex items-center gap-2 sm:gap-3 bg-[#f5f6f7] p-3 sm:p-4 rounded-lg w-full min-w-0">
                 <LinkIcon className="w-4 h-4 text-navy-dark shrink-0 flex-shrink-0" />
                 <span className="text-[12px] sm:text-[13px] text-navy-dark break-all text-left flex-1 min-w-0">
                   {shareLink}
                 </span>
               </div>
-              {shareToken && (
-                <p className="text-[12px] sm:text-[13px] text-[#8d8989]">
-                  Expires in {getExpiryText()}
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4 w-full">
               <Button 
                 onClick={handleCopy}
-                className="w-full h-12 rounded-full bg-teal-primary text-white font-semibold flex items-center justify-center gap-2"
+                variant="outline"
+                className="w-full h-10 rounded-lg border-[#d0d5dd] text-[#101928] font-medium flex items-center justify-center gap-2"
               >
                 {copied ? (
                   <>
-                    <Check className="w-5 h-5" />
+                    <Check className="w-4 h-4" />
                     Copied!
                   </>
                 ) : (
                   <>
-                    <Copy className="w-5 h-5" />
+                    <Copy className="w-4 h-4" />
                     Copy Link
                   </>
                 )}
               </Button>
+            </div>
+
+            {/* PIN Section */}
+            <div className="flex flex-col gap-3 w-full">
+              <h3 className="text-[14px] font-semibold text-[#7a828f]">Verification PIN</h3>
+              <div className="flex items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border-2 border-purple-200">
+                <span className="text-[32px] sm:text-[40px] font-bold text-purple-accent tracking-[0.3em]">
+                  {shareToken?.pin || '-----'}
+                </span>
+              </div>
+              <p className="text-[12px] text-[#8d8989] text-center">
+                Give this PIN to your doctor. They'll need both the link and PIN to access your records.
+              </p>
+            </div>
+
+            {shareToken && (
+              <p className="text-[13px] text-[#8d8989] text-center bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
+                ⏱️ Expires in {getExpiryText()}
+              </p>
+            )}
+
+            <div className="flex flex-col gap-3 w-full pt-4">
               <Button variant="ghost" onClick={handleRegenerate} className="text-teal-primary font-semibold">
-                Re-Generate
+                Generate New Link
               </Button>
             </div>
           </div>

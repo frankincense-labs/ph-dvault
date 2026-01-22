@@ -1,20 +1,19 @@
-import { useState, useRef } from 'react'
-import { ChevronLeft, Calendar as CalendarIcon, Upload, Loader2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { ChevronLeft, Upload, Loader2, X } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { format } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { MuiDatePicker } from '@/components/ui/mui-date-picker'
 import { useAuthStore } from '@/store/useAuthStore'
-import { createRecord, uploadFile } from '@/lib/api/records'
+import { createRecord, updateRecord, uploadFile } from '@/lib/api/records'
+import type { MedicalRecord } from '@/types/database'
 
 const chronicConditionSchema = z.object({
   condition: z.string().min(1, 'Condition name is required'),
@@ -27,12 +26,17 @@ type ChronicConditionFormData = z.infer<typeof chronicConditionSchema>
 
 export default function AddChronicCondition() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('edit')
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null)
 
   const form = useForm<ChronicConditionFormData>({
     resolver: zodResolver(chronicConditionSchema),
@@ -42,6 +46,40 @@ export default function AddChronicCondition() {
       notes: '',
     },
   })
+
+  // Load editing record if in edit mode
+  useEffect(() => {
+    if (editId) {
+      const editingRecordStr = sessionStorage.getItem('editingRecord')
+      if (editingRecordStr) {
+        try {
+          const record = JSON.parse(editingRecordStr) as MedicalRecord
+          if (record.id === editId) {
+            setIsEditMode(true)
+            setEditingRecord(record)
+            
+            // Populate form
+            form.setValue('condition', record.title)
+            form.setValue('notes', record.description || '')
+            
+            if (record.metadata?.hospital) {
+              form.setValue('hospital', record.metadata.hospital)
+            }
+            
+            if (record.start_date) {
+              form.setValue('diagnosis_date', new Date(record.start_date))
+            }
+            
+            if (record.file_url) {
+              setExistingFileUrl(record.file_url)
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing editing record:', err)
+        }
+      }
+    }
+  }, [editId, form])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -58,6 +96,7 @@ export default function AddChronicCondition() {
         return
       }
       setSelectedFile(file)
+      setExistingFileUrl(null)
       setError(null)
     } else {
       setSelectedFile(null)
@@ -66,6 +105,7 @@ export default function AddChronicCondition() {
 
   const handleRemoveFile = () => {
     setSelectedFile(null)
+    setExistingFileUrl(null)
     setError(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -79,7 +119,7 @@ export default function AddChronicCondition() {
     setError(null)
 
     try {
-      let fileUrl: string | undefined
+      let fileUrl = existingFileUrl || undefined
       let fileHash: string | undefined
 
       // Upload file if selected
@@ -96,28 +136,36 @@ export default function AddChronicCondition() {
         }
       }
 
-      // Create record
-      await createRecord(user.id, {
-        category: 'chronic_conditions',
+      const recordData = {
+        category: 'chronic_conditions' as const,
         title: data.condition,
         description: data.notes || null,
         file_url: fileUrl,
         file_hash: fileHash,
-        status: 'ongoing',
+        status: 'ongoing' as const,
         start_date: data.diagnosis_date.toISOString(),
         metadata: {
           hospital: data.hospital || null,
         },
-      })
+      }
+
+      if (isEditMode && editingRecord) {
+        await updateRecord(editingRecord.id, user.id, recordData)
+      } else {
+        await createRecord(user.id, recordData)
+      }
 
       // Invalidate and refetch records
       queryClient.invalidateQueries({ queryKey: ['records', user.id] })
 
+      // Clear editing data
+      sessionStorage.removeItem('editingRecord')
+
       // Navigate back to dashboard
       navigate('/dashboard')
     } catch (err: any) {
-      console.error('Error adding chronic condition:', err)
-      setError(err.message || 'Failed to add chronic condition. Please try again.')
+      console.error('Error saving chronic condition:', err)
+      setError(err.message || 'Failed to save chronic condition. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -131,7 +179,9 @@ export default function AddChronicCondition() {
           <button onClick={() => navigate(-1)} className="p-2 bg-[#f5f6f7] rounded-lg hover:bg-[#eeeffd] transition-colors">
             <ChevronLeft className="w-5 h-5 text-[#98a2b3]" />
           </button>
-          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">Add Chronic Condition</h1>
+          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">
+            {isEditMode ? 'Edit Chronic Condition' : 'Add Chronic Condition'}
+          </h1>
         </div>
 
         <Form {...form}>
@@ -141,7 +191,7 @@ export default function AddChronicCondition() {
               name="condition"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#727a86] text-[14px]">Condition</FormLabel>
+                  <FormLabel className="text-[#727a86] text-[14px]">Condition <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="e.g. Diabetes" 
@@ -159,30 +209,13 @@ export default function AddChronicCondition() {
               name="diagnosis_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#727a86] text-[14px]">Date of Diagnosis</FormLabel>
+                  <FormLabel className="text-[#727a86] text-[14px]">Date of Diagnosis <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-between px-0 border-0 border-b border-[#d0d5dd] rounded-none h-11 text-left font-normal hover:bg-transparent"
-                        >
-                          <span className={field.value ? "text-[#101928]" : "text-[#727a86]"}>
-                            {field.value ? format(field.value, "PPP") : "Select date"}
-                          </span>
-                          <CalendarIcon className="h-5 w-5 text-[#667185]" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <MuiDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select date"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -194,7 +227,7 @@ export default function AddChronicCondition() {
               name="hospital"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#727a86] text-[14px]">Hospital</FormLabel>
+                  <FormLabel className="text-[#727a86] text-[14px]">Hospital (Optional)</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="e.g. Well Vine Hospital" 
@@ -212,10 +245,10 @@ export default function AddChronicCondition() {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#727a86] text-[14px]">Notes</FormLabel>
+                  <FormLabel className="text-[#727a86] text-[14px]">Notes (Optional)</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Take medication as directed" 
+                      placeholder="Add any additional notes" 
                       className="border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 focus-visible:ring-0 focus-visible:border-teal-primary text-[#101928]"
                       {...field}
                     />
@@ -226,7 +259,7 @@ export default function AddChronicCondition() {
             />
 
             <div className="flex flex-col gap-4 mt-4">
-              <Label className="text-[#727a86] text-[14px]">Test Results</Label>
+              <Label className="text-[#727a86] text-[14px]">Test Results (Optional)</Label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -237,29 +270,30 @@ export default function AddChronicCondition() {
               />
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center border-2 border-dashed border-[#d0d5dd] rounded-xl py-10 bg-[#f5f6f7] hover:bg-[#eeeffd] hover:border-teal-primary/50 transition-all cursor-pointer"
+                className="flex items-center justify-center border-2 border-dashed border-[#d0d5dd] rounded-lg py-6 bg-[#f5f6f7] hover:bg-[#eeeffd] hover:border-teal-primary/50 transition-all cursor-pointer"
               >
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="w-6 h-6 text-[#98a2b3]" />
                   <span className="text-[14px] text-black font-semibold">
-                    {selectedFile ? selectedFile.name : 'Upload test results here'}
+                    {selectedFile ? selectedFile.name : existingFileUrl ? 'File attached' : 'Upload test results here'}
                   </span>
                   {selectedFile && (
-                    <>
-                      <span className="text-[12px] text-[#8d8989]">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveFile()
-                        }}
-                        className="text-[12px] text-red-600 hover:text-red-700 mt-1"
-                      >
-                        Remove file
-                      </button>
-                    </>
+                    <span className="text-[12px] text-[#8d8989]">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  )}
+                  {(selectedFile || existingFileUrl) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveFile()
+                      }}
+                      className="text-[12px] text-red-600 hover:text-red-700 mt-1 flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove file
+                    </button>
                   )}
                 </div>
               </div>
@@ -282,10 +316,10 @@ export default function AddChronicCondition() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {isEditMode ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
-                'Save'
+                isEditMode ? 'Update' : 'Save'
               )}
             </Button>
           </form>

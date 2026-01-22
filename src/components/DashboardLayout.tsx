@@ -59,8 +59,8 @@ export default function DashboardLayout({ children, showProfile = true }: Dashbo
             >
               <Menu className="w-6 h-6 text-[#1a1a1a]" />
             </button>
-            <span className="text-[16px] sm:text-[17px] font-semibold">9:41</span>
-            <img src="/assets/stat-dots.svg" alt="Status" className="h-3" />
+            <img src="/assets/logo.svg" alt="PH-DVault" className="h-8" />
+            <div className="w-10" /> {/* Spacer for balance */}
           </div>
 
           {showProfile && (

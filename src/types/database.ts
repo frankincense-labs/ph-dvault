@@ -28,6 +28,10 @@ export interface UserProfile {
   genotype: string | null
   date_of_birth: string | null
   gender: string | null
+  app_pin_hash: string | null
+  is_deactivated: boolean | null
+  deactivation_reason: string | null
+  deactivated_at: string | null
   created_at: string
   updated_at: string
 }
@@ -54,6 +58,8 @@ export interface MedicalRecord {
   status: 'ongoing' | 'completed' | 'archived'
   start_date: string | null
   end_date: string | null
+  encrypted_data?: string | null // Encrypted description + metadata
+  is_encrypted?: boolean // Whether the record is encrypted
   created_at: string
   updated_at: string
 }
@@ -63,7 +69,8 @@ export interface ShareToken {
   id: string
   user_id: string // Patient who created the share
   method: ShareMethod
-  token: string // Unique token/code
+  token: string // Unique token (UUID for links)
+  pin: string | null // 5-digit verification PIN
   record_ids: string[] // Array of record IDs to share
   expires_at: string
   status: ShareStatus
@@ -80,6 +87,7 @@ export interface AccessLog {
   action: 'view' | 'create' | 'update' | 'delete' | 'share' | 'access_shared'
   ip_address: string | null
   user_agent: string | null
+  metadata?: Record<string, any> // Additional context about the action
   created_at: string
 }
 

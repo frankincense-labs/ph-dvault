@@ -160,113 +160,364 @@
   }
 }
 
-/* Smooth animations */
+/* ========================================
+   SMOOTH ANIMATIONS & TRANSITIONS
+   ======================================== */
+
+/* Keyframe Animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes slideInFromBottom {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
-@keyframes slideInFromTop {
-  from {
-    transform: translateY(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes slideInFromLeft {
-  from {
-    transform: translateX(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes slideInFromRight {
-  from {
-    transform: translateX(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+@keyframes slideLeft {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideRight {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes scaleIn {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-/* Animation utilities */
+@keyframes scaleOut {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.95); opacity: 0; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2deg); }
+  75% { transform: rotate(2deg); }
+}
+
+/* Animation Classes */
 .animate-in {
   animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-out {
+  animation: fadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-in-from-bottom-4 {
-  animation: slideInFromBottom 0.4s ease-out;
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .slide-in-from-top-4 {
-  animation: slideInFromTop 0.4s ease-out;
+  animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .slide-in-from-left-4 {
-  animation: slideInFromLeft 0.4s ease-out;
+  animation: slideRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .slide-in-from-right-4 {
-  animation: slideInFromRight 0.4s ease-out;
+  animation: slideLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .scale-in {
-  animation: scaleIn 0.3s ease-out;
+  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Smooth transitions for interactive elements */
-button, a, [role="button"] {
-  transition: all 0.2s ease-in-out;
+.bounce-in {
+  animation: bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Duration modifiers */
+.duration-150 { animation-duration: 150ms; }
+.duration-200 { animation-duration: 200ms; }
+.duration-300 { animation-duration: 300ms; }
+.duration-500 { animation-duration: 500ms; }
+.duration-700 { animation-duration: 700ms; }
+
+/* Delay modifiers */
+.delay-75 { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ========================================
+   GLOBAL TRANSITIONS
+   ======================================== */
+
+/* Smooth transitions for ALL interactive elements */
+button, 
+a, 
+[role="button"],
+input,
+select,
+textarea,
+.transition-all {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Input focus transitions */
+input:focus,
+select:focus,
+textarea:focus {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+/* Card and container transitions */
+.card,
+[class*="rounded-xl"],
+[class*="rounded-lg"] {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.2s ease;
 }
 
 /* Hover effects */
 .hover-lift {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.hover-scale {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-glow {
+  transition: box-shadow 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(34, 154, 148, 0.3);
+}
+
+/* Button press effect */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Link hover underline animation */
+.link-animate {
+  position: relative;
+}
+
+.link-animate::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--teal-primary);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.link-animate:hover::after {
+  width: 100%;
+}
+
+/* Checkbox/Radio smooth transitions */
+input[type="checkbox"],
+input[type="radio"] {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  animation: bounceIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Page/Route transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-exit {
+  opacity: 1;
+}
+
+.page-exit-active {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Stagger children animation helper */
+.stagger-children > * {
+  opacity: 0;
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* Loading shimmer effect */
+.shimmer {
+  background: linear-gradient(90deg, #f5f6f7 25%, #e8e9ea 50%, #f5f6f7 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Toast/Notification animations */
+.toast-enter {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+             fadeIn 0.3s ease;
+}
+
+.toast-exit {
+  animation: slideDown 0.3s cubic-bezier(0.4, 0, 1, 1), 
+             fadeOut 0.3s ease;
+}
+
+/* Modal/Dialog animations */
+.modal-overlay {
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Dropdown animations */
+.dropdown-enter {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top;
+}
+
+/* Icon animations */
+.icon-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.icon-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.icon-bounce {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Success checkmark animation */
+@keyframes checkmark {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.checkmark-animate {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: checkmark 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 0.2s;
+}
+
+/* Ripple effect for buttons */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.ripple:active::before {
+  width: 300px;
+  height: 300px;
 }
 
 @utility heading-xl {
@@ -336,4 +587,93 @@ button, a, [role="button"] {
   font-size: 20px;
   font-weight: 400;
   color: #fefefe;
+}
+
+/* ========================================
+   PHONE INPUT STYLES
+   ======================================== */
+
+.react-international-phone-country-selector-button {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 9999px 0 0 9999px !important;
+  height: 48px !important;
+  padding: 0 12px !important;
+  background: #f8f9fa !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.react-international-phone-country-selector-button:hover {
+  background: #e8e9ea !important;
+  border-color: #a0a7b0 !important;
+}
+
+.react-international-phone-country-selector-button:focus {
+  outline: none !important;
+  border-color: var(--teal-primary) !important;
+  box-shadow: 0 0 0 3px rgba(34, 154, 148, 0.15) !important;
+}
+
+.react-international-phone-country-selector-dropdown {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid #e5e7eb !important;
+  max-height: 320px !important;
+  z-index: 1000 !important;
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transform-origin: top left !important;
+  overflow: hidden !important;
+}
+
+.react-international-phone-country-selector-dropdown__list-item {
+  padding: 12px 16px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 8px !important;
+  margin: 2px 6px !important;
+}
+
+.react-international-phone-country-selector-dropdown__list-item:hover {
+  background: #f0faf9 !important;
+  transform: translateX(4px) !important;
+}
+
+.react-international-phone-country-selector-dropdown__list-item--focused {
+  background: #e0f2f1 !important;
+  transform: translateX(4px) !important;
+}
+
+.react-international-phone-input-container {
+  display: flex !important;
+  width: 100% !important;
+}
+
+.react-international-phone-input {
+  flex: 1 !important;
+  height: 48px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-left: none !important;
+  border-radius: 0 9999px 9999px 0 !important;
+  padding: 0 16px !important;
+  font-family: 'Bricolage Grotesque', sans-serif !important;
+  font-size: 16px !important;
+  color: #101928 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.react-international-phone-input:hover {
+  border-color: #a0a7b0 !important;
+}
+
+.react-international-phone-input:focus {
+  outline: none !important;
+  border-color: var(--teal-primary) !important;
+  box-shadow: 0 0 0 3px rgba(34, 154, 148, 0.15) !important;
+}
+
+.react-international-phone-input::placeholder {
+  color: #98a2b3 !important;
+  transition: color 0.2s ease !important;
+}
+
+.react-international-phone-input:focus::placeholder {
+  color: #c0c7cf !important;
 }

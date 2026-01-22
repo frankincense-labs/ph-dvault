@@ -1,16 +1,17 @@
 import { useState } from 'react'
-import { ChevronLeft, UserMinus, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, UserMinus, AlertTriangle, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/store/useAuthStore'
+import { deactivateAccount } from '@/lib/api/account'
 
 export default function DeactivateAccount() {
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
   const [step, setStep] = useState(1) // 1: Warning, 2: Confirmation
   const [reason, setReason] = useState('')
   const [confirmText, setConfirmText] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const reasons = [
     'I no longer need this service',
@@ -22,18 +23,23 @@ export default function DeactivateAccount() {
 
   const handleDeactivate = async () => {
     if (confirmText.toLowerCase() !== 'deactivate') {
-      alert('Please type "DEACTIVATE" to confirm')
+      setError('Please type "DEACTIVATE" to confirm')
       return
     }
 
-    // TODO: Call API to deactivate account
-    // await deactivateAccountAPI(reason)
-    
-    // Logout and redirect
-    await logout()
-    navigate('/signin', { 
-      state: { message: 'Your account has been deactivated. You can reactivate it by signing in again.' }
-    })
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await deactivateAccount(reason)
+      navigate('/signin', { 
+        state: { message: 'Your account has been deactivated. You can reactivate it by signing in again.' }
+      })
+    } catch (err: any) {
+      setError(err.message || 'Failed to deactivate account. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -117,20 +123,36 @@ export default function DeactivateAccount() {
                 <input
                   type="text"
                   value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmText(e.target.value)
+                    setError(null)
+                  }}
                   placeholder="DEACTIVATE"
                   className="w-full px-4 py-3 border-2 border-[#f5f6f7] rounded-lg focus:outline-none focus:border-teal-primary text-[14px]"
                 />
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <Button 
                 onClick={handleDeactivate}
-                disabled={confirmText.toLowerCase() !== 'deactivate'}
+                disabled={confirmText.toLowerCase() !== 'deactivate' || isLoading}
                 className="w-full h-12 rounded-full bg-[#d42620] text-white font-semibold disabled:opacity-50"
               >
-                Deactivate Account
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deactivating...
+                  </>
+                ) : (
+                  'Deactivate Account'
+                )}
               </Button>
               <Button 
                 variant="ghost"

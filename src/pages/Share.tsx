@@ -105,34 +105,23 @@ export default function Share() {
           <p className="text-[12px] sm:text-[13px] text-[#8d8989] font-medium">Generate a link or code to share your medical data temporarily</p>
         </div>
 
-        {/* Share Options */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <button 
-            onClick={() => navigate('/share/link')}
-            className="flex flex-col items-center gap-3 sm:gap-4 p-5 sm:p-6 bg-[#f5f6f7] rounded-xl text-center hover:bg-[#eeeffd] transition-colors"
-          >
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#f59e08] rounded-lg flex items-center justify-center text-white">
-              <LinkIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-[14px] font-medium text-black">Share Link</h3>
-              <p className="text-[12px] text-[#8d8989]">Secure link sharing</p>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => navigate('/share/code')}
-            className="flex flex-col items-center gap-3 sm:gap-4 p-5 sm:p-6 bg-[#f5f6f7] rounded-xl text-center hover:bg-[#eeeffd] transition-colors"
-          >
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-purple-accent rounded-lg flex items-center justify-center text-white">
-              <Lock className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-[14px] font-medium text-black">Access Code</h3>
-              <p className="text-[12px] text-[#8d8989]">One-time access code</p>
-            </div>
-          </button>
-        </div>
+        {/* Share Option */}
+        <button 
+          onClick={() => navigate('/share/link')}
+          className="flex items-center gap-4 p-5 sm:p-6 bg-gradient-to-r from-[#f5f6f7] to-[#fffbeb] rounded-xl hover:shadow-md transition-all border border-[#e5e7eb] hover:border-orange-dosage/30"
+        >
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-orange-dosage rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-dosage/20">
+            <LinkIcon className="w-6 h-6" />
+          </div>
+          <div className="flex-1 text-left">
+            <h3 className="text-[15px] sm:text-[16px] font-semibold text-black">Generate Share Link</h3>
+            <p className="text-[12px] sm:text-[13px] text-[#8d8989]">Create a secure link + PIN for your doctor</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-[12px] text-purple-accent font-medium bg-purple-50 px-3 py-1.5 rounded-full">
+            <Lock className="w-3.5 h-3.5" />
+            PIN Protected
+          </div>
+        </button>
 
         {/* Active Shares */}
         <div className="flex flex-col gap-4">
@@ -319,36 +308,43 @@ export default function Share() {
         <DialogContent className="bg-white border-0 shadow-2xl rounded-[12px] p-6 max-w-[500px] mx-auto">
           <DialogHeader>
             <DialogTitle className="text-[18px] font-bold text-black">
-              {viewingShare?.method === 'link' ? 'Share Link' : 'Access Code'}
+              Share Details
             </DialogTitle>
             <DialogDescription className="text-[14px] text-[#8d8989] pt-2">
-              {viewingShare?.method === 'link' 
-                ? 'Copy this link to share with authorized personnel.'
-                : 'Share this code with authorized personnel.'}
+              Share both the link and PIN with your doctor.
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4">
-            {viewingShare?.method === 'link' ? (
+          <div className="mt-4 flex flex-col gap-4">
+            {/* Link */}
+            <div className="flex flex-col gap-2">
+              <span className="text-[12px] font-medium text-[#7a828f]">Access Link</span>
               <div className="flex items-center gap-2 bg-[#f5f6f7] p-3 rounded-lg border border-[#d0d5dd]">
                 <LinkIcon className="w-4 h-4 text-navy-dark shrink-0" />
-                <span className="text-[13px] text-navy-dark break-all flex-1 min-w-0">
-                  {generateShareLink(viewingShare.token)}
+                <span className="text-[12px] text-navy-dark break-all flex-1 min-w-0">
+                  {viewingShare ? generateShareLink(viewingShare.token) : ''}
                 </span>
               </div>
-            ) : (
-              <div className="flex items-center justify-center bg-[#f5f6f7] p-6 rounded-lg border border-[#d0d5dd]">
-                <span className="text-[32px] font-bold text-navy-dark tracking-wider">
-                  {viewingShare?.token}
-                </span>
+            </div>
+            
+            {/* PIN */}
+            {viewingShare?.pin && (
+              <div className="flex flex-col gap-2">
+                <span className="text-[12px] font-medium text-[#7a828f]">Verification PIN</span>
+                <div className="flex items-center justify-center bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <span className="text-[24px] font-bold text-purple-accent tracking-[0.2em]">
+                    {viewingShare.pin}
+                  </span>
+                </div>
               </div>
             )}
+            
             {viewingShare && (() => {
               const isExpired = new Date(viewingShare.expires_at) < new Date()
               const isRevoked = viewingShare.status === 'revoked'
               
               if (isRevoked) {
                 return (
-                  <p className="text-[12px] text-[#8d8989] mt-2 text-center">
+                  <p className="text-[12px] text-red-600 bg-red-50 p-2 rounded-lg text-center">
                     This share has been revoked
                   </p>
                 )
@@ -356,15 +352,15 @@ export default function Share() {
               
               if (isExpired || viewingShare.status === 'expired') {
                 return (
-                  <p className="text-[12px] text-[#8d8989] mt-2 text-center">
+                  <p className="text-[12px] text-amber-600 bg-amber-50 p-2 rounded-lg text-center">
                     This share has expired
                   </p>
                 )
               }
               
               return (
-                <p className="text-[12px] text-[#8d8989] mt-2 text-center">
-                  Expires in {getExpiryText(viewingShare.expires_at)}
+                <p className="text-[12px] text-[#8d8989] text-center">
+                  ⏱️ Expires in {getExpiryText(viewingShare.expires_at)}
                 </p>
               )
             })()}
@@ -392,7 +388,7 @@ export default function Share() {
               ) : (
                 <>
                   <Copy className="w-4 h-4 mr-2" />
-                  Copy
+                  Copy Link
                 </>
               )}
             </Button>

@@ -21,7 +21,7 @@ const categoryConfig: Record<RecordCategory, { label: string; icon: string; colo
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user, isAuthenticated, role } = useAuthStore()
-  const [detailsVisible, setDetailsVisible] = useState(false)
+  const [detailsVisible, setDetailsVisible] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<RecordCategory | undefined>(undefined)
   const [profile, setProfile] = useState<any>(null)
   const isDoctor = role === 'doctor'
@@ -295,7 +295,11 @@ export default function Dashboard() {
                 return (
                   <div 
                     key={record.id}
-                    onClick={() => navigate(getCategoryRoute(record.category))}
+                    onClick={() => {
+                      // Store the record for viewing
+                      sessionStorage.setItem('viewingRecord', JSON.stringify(record))
+                      navigate(`${getCategoryRoute(record.category)}?id=${record.id}`)
+                    }}
                     className="flex items-center justify-between p-3 sm:p-4 md:p-5 bg-[#f5f6f7] rounded-xl cursor-pointer hover:bg-[#eef2f2] hover:shadow-md active:scale-[0.98] transition-all duration-200 w-full animate-in fade-in slide-in-from-bottom-4"
                     style={{ 
                       animationDelay: `${index * 50}ms`,

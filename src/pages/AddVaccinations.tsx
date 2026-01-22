@@ -1,20 +1,19 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { format } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { MuiDatePicker } from '@/components/ui/mui-date-picker'
 import { useAuthStore } from '@/store/useAuthStore'
-import { createRecord } from '@/lib/api/records'
+import { createRecord, updateRecord } from '@/lib/api/records'
+import type { MedicalRecord } from '@/types/database'
 
 const vaccinationSchema = z.object({
   vaccine: z.string().min(1, 'Vaccine name is required'),
@@ -30,11 +29,15 @@ type VaccinationFormData = z.infer<typeof vaccinationSchema>
 
 export default function AddVaccinations() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('edit')
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [completed, setCompleted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null)
 
   const form = useForm<VaccinationFormData>({
     resolver: zodResolver(vaccinationSchema),
@@ -45,6 +48,51 @@ export default function AddVaccinations() {
       notes: '',
     },
   })
+
+  // Load editing record if in edit mode
+  useEffect(() => {
+    if (editId) {
+      const editingRecordStr = sessionStorage.getItem('editingRecord')
+      if (editingRecordStr) {
+        try {
+          const record = JSON.parse(editingRecordStr) as MedicalRecord
+          if (record.id === editId) {
+            setIsEditMode(true)
+            setEditingRecord(record)
+            
+            // Populate form
+            form.setValue('vaccine', record.title)
+            form.setValue('notes', record.description || '')
+            
+            // Set completed status
+            setCompleted(record.status === 'completed')
+            
+            if (record.metadata) {
+              form.setValue('vaccine_name', record.metadata.vaccine_name || '')
+              form.setValue('side_effects', record.metadata.side_effects || '')
+              
+              if (record.metadata.first_dose) {
+                form.setValue('first_dose', new Date(record.metadata.first_dose))
+              }
+              if (record.metadata.second_dose) {
+                form.setValue('second_dose', new Date(record.metadata.second_dose))
+              }
+              if (record.metadata.last_dose) {
+                form.setValue('last_dose', new Date(record.metadata.last_dose))
+              }
+            }
+            
+            // Fallback to start_date for first_dose
+            if (record.start_date && !record.metadata?.first_dose) {
+              form.setValue('first_dose', new Date(record.start_date))
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing editing record:', err)
+        }
+      }
+    }
+  }, [editId, form])
 
   const onSubmit = async (data: VaccinationFormData) => {
     if (!user?.id) {
@@ -59,9 +107,8 @@ export default function AddVaccinations() {
       // Determine status based on completed switch
       const status: 'ongoing' | 'completed' | 'archived' = completed ? 'completed' : 'ongoing'
 
-      // Create record
-      await createRecord(user.id, {
-        category: 'vaccinations',
+      const recordData = {
+        category: 'vaccinations' as const,
         title: data.vaccine,
         description: data.notes || null,
         status,
@@ -74,16 +121,25 @@ export default function AddVaccinations() {
           last_dose: data.last_dose?.toISOString() || null,
           side_effects: data.side_effects || null,
         },
-      })
+      }
+
+      if (isEditMode && editingRecord) {
+        await updateRecord(editingRecord.id, user.id, recordData)
+      } else {
+        await createRecord(user.id, recordData)
+      }
 
       // Invalidate and refetch records
       queryClient.invalidateQueries({ queryKey: ['records', user.id] })
 
+      // Clear editing data
+      sessionStorage.removeItem('editingRecord')
+
       // Navigate back to dashboard
       navigate('/dashboard')
     } catch (err: any) {
-      console.error('Error adding vaccination:', err)
-      setError(err.message || 'Failed to add vaccination. Please try again.')
+      console.error('Error saving vaccination:', err)
+      setError(err.message || 'Failed to save vaccination. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -96,7 +152,9 @@ export default function AddVaccinations() {
           <button onClick={() => navigate(-1)} className="p-2 bg-[#f5f6f7] rounded-lg hover:bg-[#eeeffd] transition-colors">
             <ChevronLeft className="w-5 h-5 text-[#98a2b3]" />
           </button>
-          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">Add Vaccinations</h1>
+          <h1 className="text-[18px] sm:text-[20px] font-bold text-black">
+            {isEditMode ? 'Edit Vaccination' : 'Add Vaccinations'}
+          </h1>
         </div>
 
         <Form {...form}>
@@ -112,7 +170,7 @@ export default function AddVaccinations() {
                 name="vaccine"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Vaccine</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">Vaccine <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g. Corona Virus Vaccine" 
@@ -130,7 +188,7 @@ export default function AddVaccinations() {
                 name="vaccine_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[#7a828f] text-[14px]">Vaccine Name</FormLabel>
+                    <FormLabel className="text-[#7a828f] text-[14px]">Vaccine Name (Optional)</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g. Pfizer" 
@@ -149,32 +207,14 @@ export default function AddVaccinations() {
                   name="first_dose"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[#7a828f] text-[14px]">First Dose</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start text-left font-normal border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 hover:bg-transparent"
-                            >
-                              {field.value ? (
-                                format(field.value, 'dd/MM/yyyy')
-                              ) : (
-                                <span className="text-[#98a2b3]">DD/MM/YYYY</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 text-[#667185]" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormLabel className="text-[#7a828f] text-[14px]">First Dose <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <MuiDatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="DD/MM/YYYY"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -186,31 +226,13 @@ export default function AddVaccinations() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[#7a828f] text-[14px]">Second Dose (Optional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start text-left font-normal border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 hover:bg-transparent"
-                            >
-                              {field.value ? (
-                                format(field.value, 'dd/MM/yyyy')
-                              ) : (
-                                <span className="text-[#98a2b3]">DD/MM/YYYY</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 text-[#667185]" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <MuiDatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="DD/MM/YYYY"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -223,31 +245,13 @@ export default function AddVaccinations() {
                     render={({ field }) => (
                       <FormItem className="animate-in fade-in slide-in-from-top-1">
                         <FormLabel className="text-[#7a828f] text-[14px]">Last Dose</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start text-left font-normal border-0 border-b border-[#d0d5dd] rounded-none px-0 h-11 hover:bg-transparent"
-                              >
-                                {field.value ? (
-                                  format(field.value, 'dd/MM/yyyy')
-                                ) : (
-                                  <span className="text-[#98a2b3]">DD/MM/YYYY</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 text-[#667185]" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <MuiDatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="DD/MM/YYYY"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -306,10 +310,10 @@ export default function AddVaccinations() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {isEditMode ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
-                'Save'
+                isEditMode ? 'Update' : 'Save'
               )}
             </Button>
           </form>
